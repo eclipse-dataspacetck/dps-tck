@@ -1,4 +1,5 @@
+.claude
 .gradle
-build
-.kotlin
 .idea
+.kotlin
+build
