@@ -17,11 +17,7 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.tck.dsp.core)
-    implementation(libs.tck.dsp.tck.runtime)
-    implementation(libs.junit.platform.launcher)
-}
-
-application {
-    mainClass.set("org.eclipse.dataspacetck.dps.controlplane.suite.DpsTckSuite")
+    implementation(libs.assertj)
+    implementation(libs.tck.common.api)
+    implementation(libs.junit.jupiter.api)
 }

@@ -18,4 +18,6 @@ pluginManagement {
     }
 }
 
-include(":dps-control-plane-tck")
+include(":dps-system")
+include(":dps-system")
+include(":dps-testcases")

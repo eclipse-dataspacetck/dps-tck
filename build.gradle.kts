@@ -1,3 +1,5 @@
+import org.eclipse.dataspacetck.gradle.tckbuild.extensions.TckBuildExtension
+
 /*
  *  Copyright (c) 2026 Think-it GmbH
  *
@@ -35,20 +37,19 @@ allprojects {
     apply(plugin = "signing")
     apply(plugin = "org.eclipse.dataspacetck.build.tck-build")
 
-//    configure<TckBuildExtension> {
-//        pom {
-//            scmConnection = "https://github.com/eclipse-dataspacetck/dcp-tck.git"
-//            scmUrl = "scm:git:git@github.com:eclipse-dataspacetck/dcp-tck.git"
-//            groupId = project.group.toString()
-//            projectName = project.name
-//            description = "DCP Technology Compatibility Kit"
-//            projectUrl = "https://projects.eclipse.org/projects/technology.dataspacetck"
-//        }
-//    }
+    configure<TckBuildExtension> {
+        pom {
+            scmConnection = "https://github.com/eclipse-dataspacetck/dps-tck.git"
+            scmUrl = "scm:git:git@github.com:eclipse-dataspacetck/dps-tck.git"
+            projectName = project.name
+            description = "DPS Technology Compatibility Kit"
+            projectUrl = "https://projects.eclipse.org/projects/technology.dataspacetck"
+        }
+    }
 //
 //    tasks.test {
 //        useJUnitPlatform()
-//        systemProperty("dataspacetck.launcher", "org.eclipse.dataspacetck.dcp.system.DcpSystemLauncher")
+//        systemProperty("dataspacetck.launcher", "org.eclipse.dataspacetck.dps.system.DcpSystemLauncher")
 //    }
 //
 //    dependencies {
