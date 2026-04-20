@@ -17,7 +17,12 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":dps-system"))
     implementation(libs.assertj)
     implementation(libs.tck.common.api)
+    implementation(libs.tck.dsp.core)
+    implementation(libs.jackson.databind)
+    implementation(libs.okhttp)
+    implementation(libs.awaitility)
     implementation(libs.junit.jupiter.api)
 }

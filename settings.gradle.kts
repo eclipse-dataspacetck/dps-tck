@@ -19,5 +19,5 @@ pluginManagement {
 }
 
 include(":dps-system")
-include(":dps-system")
+include(":dps-tck")
 include(":dps-testcases")

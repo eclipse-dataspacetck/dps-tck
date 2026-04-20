@@ -18,5 +18,7 @@ plugins {
 
 dependencies {
     implementation(libs.tck.dsp.core)
+    implementation(libs.jackson.databind)
+    implementation(libs.okhttp)
     implementation(libs.junit.platform.launcher)
 }
