@@ -88,4 +88,24 @@ public class HttpControlPlaneClient implements ControlPlaneClient {
             throw new RuntimeException("Failed to signal data flow completion", e);
         }
     }
+
+    @Override
+    public void signalDataFlowTerminate(String processId) {
+        try {
+            var url = baseUrl + "/dataflows/terminate/" + processId;
+            var request = new Request.Builder()
+                    .url(url)
+                    .post(RequestBody.create("{}", JSON))
+                    .build();
+
+            monitor.debug("Signaling data flow terminate at " + url);
+            try (var response = httpClient.newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    throw new RuntimeException("Failed to signal data flow terminate: HTTP " + response.code());
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to signal data flow terminate", e);
+        }
+    }
 }

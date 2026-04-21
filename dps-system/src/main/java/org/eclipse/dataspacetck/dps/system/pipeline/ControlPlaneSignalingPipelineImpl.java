@@ -35,12 +35,14 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
 
     private static final String PREPARE_PATH = "/dataflows/prepare";
     private static final String COMPLETED_PATH_PATTERN = "/dataflows/[^/]+/completed";
+    private static final String TERMINATED_PATH_PATTERN = "/dataflows/[^/]+/terminate";
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ControlPlaneClient controlPlaneClient;
     private final AtomicReference<Map<String, Object>> receivedPrepareMessage = new AtomicReference<>();
     private final AtomicReference<String> actualProcessId = new AtomicReference<>();
     private final AtomicReference<Boolean> receivedCompletedNotification = new AtomicReference<>();
+    private final AtomicReference<Boolean> receivedTerminateMessage = new AtomicReference<>();
 
     public ControlPlaneSignalingPipelineImpl(ControlPlaneClient controlPlaneClient,
                                              CallbackEndpoint endpoint,
@@ -66,7 +68,6 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
         stages.add(() ->
                 endpoint.registerProtocolHandler(PREPARE_PATH, (headers, body) -> {
                     try {
-                        @SuppressWarnings("unchecked")
                         var message = MAPPER.readValue(body, Map.class);
                         receivedPrepareMessage.set(message);
                         actualProcessId.set((String) message.get("processId"));
@@ -103,6 +104,21 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
     }
 
     @Override
+    public ControlPlaneSignalingPipeline expectDataFlowTerminateMessage(String processId) {
+        var latch = new CountDownLatch(1);
+        expectLatches.add(latch);
+        stages.add(() ->
+                endpoint.registerProtocolHandler(TERMINATED_PATH_PATTERN, (headers, body) -> {
+                    receivedTerminateMessage.set(true);
+                    monitor.debug("Received terminated message from control plane");
+                    endpoint.deregisterHandler(TERMINATED_PATH_PATTERN);
+                    latch.countDown();
+                    return new HandlerResponse(200, "{}");
+                }));
+        return this;
+    }
+
+    @Override
     public ControlPlaneSignalingPipeline signalDataFlowCompleted(String processId) {
         stages.add(() -> {
             var id = actualProcessId.get();
@@ -116,8 +132,26 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
     }
 
     @Override
+    public ControlPlaneSignalingPipeline signalDataFlowTerminate(String processId) {
+        stages.add(() -> {
+            var id = actualProcessId.get();
+            if (id == null) {
+                throw new RuntimeException("Cannot signal completion: no actual process ID received from prepare message");
+            }
+            monitor.debug("Signaling data flow terminate for actual processId=" + id);
+            controlPlaneClient.signalDataFlowTerminate(id);
+        });
+        return this;
+    }
+
+    @Override
     public ControlPlaneSignalingPipeline thenWaitForCompletedMessage() {
         return thenWait("completed notification to be received by TCK data plane", () -> receivedCompletedNotification.get() != null);
+    }
+
+    @Override
+    public ControlPlaneSignalingPipeline thenWaitForTerminateMessage() {
+        return thenWait("terminate message to be received by TCK data plane", () -> receivedTerminateMessage.get() != null);
     }
 
     /**

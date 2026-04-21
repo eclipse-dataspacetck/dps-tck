@@ -44,10 +44,10 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
     protected String datasetId = randomUUID().toString();
 
     @MandatoryTest
-    @DisplayName("CP_C_S:01-01: Verify DataFlowPrepareMessage is dispatched and completed notification is sent to the data plane")
+    @DisplayName("CP_C:01-01: Verify DataFlowPrepareMessage is dispatched and completed notification is sent to the data plane")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (data plane)
-            participant CUT as Connector Under Test (control plane)
+            participant CUT as Control-Plane Under Test
 
             TCK->>CUT: Signal to start data flow preparation
             CUT->>TCK: DataFlowPrepareMessage (POST /dataflows/prepare)
@@ -55,7 +55,7 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
             TCK->>CUT: Signal transfer process completion
             CUT->>TCK: Completed notification (POST /dataflows/{processId}/completed)
             """)
-    public void cp_c_s_01_01() {
+    public void cp_c_01_01() {
         signalingPipeline
                 .expectDataFlowPrepareMessage()
                 .triggerDataFlowPreparation(processId, agreementId, datasetId)
@@ -63,6 +63,42 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
                 .expectDataFlowCompletedMessage(processId)
                 .signalDataFlowCompleted(processId)
                 .thenWaitForCompletedMessage()
+                .execute();
+
+        var received = ((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedPrepareMessage();
+
+        assertThat(received).isNotNull();
+        assertThat(received).containsKey("messageId");
+        assertThat(received).containsKey("participantId");
+        assertThat(received).containsKey("counterPartyId");
+        assertThat(received).containsKey("dataspaceContext");
+        assertThat(received).containsKey("processId");
+        assertThat(received).containsKey("agreementId");
+        assertThat(received).containsKey("datasetId");
+        assertThat(received).containsKey("transferType");
+        assertThat(received).containsKey("claims");
+    }
+
+    @MandatoryTest
+    @DisplayName("CP_C:01-02: Verify DataFlowPrepareMessage is dispatched and terminated is sent to the data plane")
+    @TestSequenceDiagram("""
+            participant TCK as Technology Compatibility Kit (data plane)
+            participant CUT as Control-Plane Under Test
+
+            TCK->>CUT: Signal to start data flow preparation
+            CUT->>TCK: DataFlowPrepareMessage (POST /dataflows/prepare)
+            TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=PREPARING)
+            TCK->>CUT: Signal transfer process termination
+            CUT->>TCK: Completed notification (POST /dataflows/{processId}/terminate)
+            """)
+    public void cp_c_01_02() {
+        signalingPipeline
+                .expectDataFlowPrepareMessage()
+                .triggerDataFlowPreparation(processId, agreementId, datasetId)
+                .thenWaitForPrepareMessage()
+                .expectDataFlowTerminateMessage(processId)
+                .signalDataFlowTerminate(processId)
+                .thenWaitForTerminateMessage()
                 .execute();
 
         var received = ((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedPrepareMessage();

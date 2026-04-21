@@ -38,4 +38,5 @@ public interface ControlPlaneClient {
      */
     void signalDataFlowCompleted(String processId);
 
+    void signalDataFlowTerminate(String processId);
 }
