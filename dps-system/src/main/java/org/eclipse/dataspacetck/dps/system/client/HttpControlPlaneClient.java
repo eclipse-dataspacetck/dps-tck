@@ -33,12 +33,12 @@ public class HttpControlPlaneClient implements ControlPlaneClient {
     private static final MediaType JSON = MediaType.get("application/json");
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final String baseUrl;
+    private final String webhookUrl;
     private final Monitor monitor;
     private final OkHttpClient httpClient;
 
-    public HttpControlPlaneClient(String baseUrl, Monitor monitor) {
-        this.baseUrl = baseUrl;
+    public HttpControlPlaneClient(String webhookUrl, Monitor monitor) {
+        this.webhookUrl = webhookUrl;
         this.monitor = monitor;
         this.httpClient = new OkHttpClient();
     }
@@ -46,12 +46,13 @@ public class HttpControlPlaneClient implements ControlPlaneClient {
     @Override
     public void triggerDataFlowPreparation(String processId, String agreementId, String datasetId, String dataPlaneUrl) {
         try {
-            var url = baseUrl + "/dataflows/trigger";
+            var url = webhookUrl + "/dataflows/trigger";
             var body = MAPPER.writeValueAsString(Map.of(
                     "processId", processId,
                     "agreementId", agreementId,
                     "datasetId", datasetId,
-                    "dataPlaneUrl", dataPlaneUrl
+                    "dataPlaneUrl", dataPlaneUrl,
+                    "dspUrl", dataPlaneUrl // TODO: refactor
             ));
             var request = new Request.Builder()
                     .url(url)
@@ -69,43 +70,4 @@ public class HttpControlPlaneClient implements ControlPlaneClient {
         }
     }
 
-    @Override
-    public void signalDataFlowCompleted(String processId) {
-        try {
-            var url = baseUrl + "/dataflows/complete/" + processId;
-            var request = new Request.Builder()
-                    .url(url)
-                    .post(RequestBody.create("{}", JSON))
-                    .build();
-
-            monitor.debug("Signaling data flow completion at " + url);
-            try (var response = httpClient.newCall(request).execute()) {
-                if (!response.isSuccessful()) {
-                    throw new RuntimeException("Failed to signal data flow completion: HTTP " + response.code());
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to signal data flow completion", e);
-        }
-    }
-
-    @Override
-    public void signalDataFlowTerminate(String processId) {
-        try {
-            var url = baseUrl + "/dataflows/terminate/" + processId;
-            var request = new Request.Builder()
-                    .url(url)
-                    .post(RequestBody.create("{}", JSON))
-                    .build();
-
-            monitor.debug("Signaling data flow terminate at " + url);
-            try (var response = httpClient.newCall(request).execute()) {
-                if (!response.isSuccessful()) {
-                    throw new RuntimeException("Failed to signal data flow terminate: HTTP " + response.code());
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to signal data flow terminate", e);
-        }
-    }
 }

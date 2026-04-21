@@ -20,6 +20,7 @@ import org.eclipse.dataspacetck.core.api.system.ConfigParam;
 import org.eclipse.dataspacetck.core.api.system.Inject;
 import org.eclipse.dataspacetck.core.api.verification.AbstractVerificationTest;
 import org.eclipse.dataspacetck.dps.system.api.pipeline.ControlPlaneSignalingPipeline;
+import org.eclipse.dataspacetck.dps.system.api.pipeline.DspPipeline;
 import org.eclipse.dataspacetck.dps.system.pipeline.ControlPlaneSignalingPipelineImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -33,6 +34,9 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
 
     @Inject
     protected ControlPlaneSignalingPipeline signalingPipeline;
+
+    @Inject
+    protected DspPipeline dspPipeline;
 
     @ConfigParam
     protected String processId = randomUUID().toString();
@@ -56,12 +60,31 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
             CUT->>TCK: Completed notification (POST /dataflows/{processId}/completed)
             """)
     public void cp_c_01_01() {
+        dspPipeline
+                .expectTransferRequestedMessage(); // TODO: DSP could be always active, no need to reason about messages content...
+
         signalingPipeline
                 .expectDataFlowPrepareMessage()
                 .triggerDataFlowPreparation(processId, agreementId, datasetId)
                 .thenWaitForPrepareMessage()
-                .expectDataFlowCompletedMessage(processId)
-                .signalDataFlowCompleted(processId)
+                .execute();
+
+        dspPipeline
+                .thenWaitForTransferRequestedMessage()
+                .thenWaitForTransferToBeInState("REQUESTED")
+                .sendTransferStartMessage(processId)
+                .thenWaitForTransferToBeInState("STARTED")
+                .execute();
+
+        signalingPipeline
+                .expectDataFlowCompletedMessage(processId);
+
+        dspPipeline
+                .sendTransferCompletionMessage(processId)
+                .thenWaitForTransferToBeInState("COMPLETED")
+                .execute();
+
+        signalingPipeline
                 .thenWaitForCompletedMessage()
                 .execute();
 
@@ -92,14 +115,34 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
             CUT->>TCK: Completed notification (POST /dataflows/{processId}/terminate)
             """)
     public void cp_c_01_02() {
+        dspPipeline
+                .expectTransferRequestedMessage(); // TODO: DSP could be always active, no need to reason about messages content...
+
         signalingPipeline
                 .expectDataFlowPrepareMessage()
                 .triggerDataFlowPreparation(processId, agreementId, datasetId)
                 .thenWaitForPrepareMessage()
-                .expectDataFlowTerminateMessage(processId)
-                .signalDataFlowTerminate(processId)
+                .execute();
+
+        dspPipeline
+                .thenWaitForTransferRequestedMessage()
+                .thenWaitForTransferToBeInState("REQUESTED")
+                .sendTransferStartMessage(processId)
+                .thenWaitForTransferToBeInState("STARTED")
+                .execute();
+
+        signalingPipeline
+                .expectDataFlowTerminateMessage(processId);
+
+        dspPipeline
+                .sendTransferTerminationMessage(processId)
+                .thenWaitForTransferToBeInState("TERMINATED")
+                .execute();
+
+        signalingPipeline
                 .thenWaitForTerminateMessage()
                 .execute();
+
 
         var received = ((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedPrepareMessage();
 

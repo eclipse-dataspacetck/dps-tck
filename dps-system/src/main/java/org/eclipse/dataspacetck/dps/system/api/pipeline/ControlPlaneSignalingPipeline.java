@@ -55,18 +55,6 @@ public interface ControlPlaneSignalingPipeline extends AsyncPipeline<ControlPlan
     ControlPlaneSignalingPipeline expectDataFlowTerminateMessage(String processId);
 
     /**
-     * Signals the control plane under test to complete the data flow for the given process ID
-     * by calling the trigger controller's complete endpoint.
-     */
-    ControlPlaneSignalingPipeline signalDataFlowCompleted(String processId);
-
-    /**
-     * Signals the control plane under test to complete the data flow for the given process ID
-     * by calling the trigger controller's complete endpoint.
-     */
-    ControlPlaneSignalingPipeline signalDataFlowTerminate(String processId);
-
-    /**
      * Waits until the TCK data plane has received the completed notification.
      */
     ControlPlaneSignalingPipeline thenWaitForCompletedMessage();

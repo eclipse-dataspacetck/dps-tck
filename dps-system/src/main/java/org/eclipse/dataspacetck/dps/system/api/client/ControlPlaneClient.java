@@ -30,13 +30,4 @@ public interface ControlPlaneClient {
      */
     void triggerDataFlowPreparation(String processId, String agreementId, String datasetId, String dataPlaneUrl);
 
-    /**
-     * Signals the control plane to transition the transfer process to completing state,
-     * causing it to send a completed notification to the data plane.
-     *
-     * @param processId the transfer process ID
-     */
-    void signalDataFlowCompleted(String processId);
-
-    void signalDataFlowTerminate(String processId);
 }

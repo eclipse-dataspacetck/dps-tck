@@ -74,7 +74,7 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
                         monitor.debug("Received DataFlowPrepareMessage from control plane, processId=" + actualProcessId.get());
                         endpoint.deregisterHandler(PREPARE_PATH);
                         latch.countDown();
-                        var statusMessage = Map.of("state", "PREPARING");
+                        var statusMessage = Map.of("state", "PREPARED");
                         return new HandlerResponse(200, MAPPER.writeValueAsString(statusMessage));
                     } catch (IOException e) {
                         return new HandlerResponse(400, "Failed to parse DataFlowPrepareMessage: " + e.getMessage());
@@ -115,32 +115,6 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
                     latch.countDown();
                     return new HandlerResponse(200, "{}");
                 }));
-        return this;
-    }
-
-    @Override
-    public ControlPlaneSignalingPipeline signalDataFlowCompleted(String processId) {
-        stages.add(() -> {
-            var id = actualProcessId.get();
-            if (id == null) {
-                throw new RuntimeException("Cannot signal completion: no actual process ID received from prepare message");
-            }
-            monitor.debug("Signaling data flow completion for actual processId=" + id);
-            controlPlaneClient.signalDataFlowCompleted(id);
-        });
-        return this;
-    }
-
-    @Override
-    public ControlPlaneSignalingPipeline signalDataFlowTerminate(String processId) {
-        stages.add(() -> {
-            var id = actualProcessId.get();
-            if (id == null) {
-                throw new RuntimeException("Cannot signal completion: no actual process ID received from prepare message");
-            }
-            monitor.debug("Signaling data flow terminate for actual processId=" + id);
-            controlPlaneClient.signalDataFlowTerminate(id);
-        });
         return this;
     }
 
