@@ -28,7 +28,7 @@ import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("base-compliance")
-@DisplayName("CP_P: Control plane consumer signaling scenarios")
+@DisplayName("CP_C: Control plane consumer signaling scenarios")
 public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest {
 
     @Inject

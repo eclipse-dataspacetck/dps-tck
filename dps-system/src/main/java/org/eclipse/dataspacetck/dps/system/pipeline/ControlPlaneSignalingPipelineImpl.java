@@ -242,6 +242,10 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
         return receivedPrepareMessage.get();
     }
 
+    public Map<String, Object> getReceivedStartMessage() {
+        return receivedStartMessage.get();
+    }
+
     private void registerDspTransferRequestHandler() {
         endpoint.registerProtocolHandler(DSP_REQUEST_PATH, (headers, body) -> {
             try {

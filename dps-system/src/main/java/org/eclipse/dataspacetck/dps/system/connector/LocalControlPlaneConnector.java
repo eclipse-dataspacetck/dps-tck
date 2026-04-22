@@ -99,7 +99,7 @@ public class LocalControlPlaneConnector {
         transferStates.put(providerPid, "REQUESTED");
         monitor.debug("Local CUT: received TransferRequestMessage, providerPid=" + providerPid);
 
-        sendAsync(dataPlaneUrl + "/dataflows/start", buildStartMessage(providerPid), "DataFlowStartMessage");
+        sendAsync(dataPlaneUrl + "/dataflows/start", buildStartMessage(providerPid, agreementId), "DataFlowStartMessage");
 
         return providerPid;
     }
@@ -141,11 +141,20 @@ public class LocalControlPlaneConnector {
         }
     }
 
-    private String buildStartMessage(String providerPid) {
+    private String buildStartMessage(String providerPid, String agreementId) {
         try {
+            var baseUrl = dataPlaneBaseUrl.get();
             return MAPPER.writeValueAsString(Map.of(
                     "messageId", UUID.randomUUID().toString(),
-                    "processId", providerPid
+                    "participantId", "local-participant",
+                    "counterPartyId", "local-counterparty",
+                    "dataspaceContext", "local-dataspace",
+                    "processId", providerPid,
+                    "agreementId", agreementId,
+                    "datasetId", UUID.randomUUID().toString(),
+                    "callbackAddress", baseUrl != null ? baseUrl : "local://callback",
+                    "transferType", "HttpData-PULL",
+                    "claims", Map.of()
             ));
         } catch (IOException e) {
             throw new RuntimeException("Failed to build DataFlowStartMessage", e);
