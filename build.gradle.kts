@@ -46,24 +46,11 @@ allprojects {
             projectUrl = "https://projects.eclipse.org/projects/technology.dataspacetck"
         }
     }
-//
-//    tasks.test {
-//        useJUnitPlatform()
-//        systemProperty("dataspacetck.launcher", "org.eclipse.dataspacetck.dps.system.DcpSystemLauncher")
-//    }
-//
-//    dependencies {
-//        implementation(rootProject.libs.json.api)
-//        implementation(rootProject.libs.jackson.databind)
-//        implementation(rootProject.libs.jackson.jsonp)
-//        implementation(rootProject.libs.titanium)
-//        implementation(rootProject.libs.okhttp)
-//        implementation(rootProject.libs.junit.jupiter)
-//        implementation(rootProject.libs.junit.platform.engine)
-//        implementation(rootProject.libs.mockito.core)
-//        implementation(rootProject.libs.awaitility)
-//        testImplementation(rootProject.libs.assertj)
-//    }
+
+    tasks.test {
+        useJUnitPlatform()
+    }
+
 }
 
 // needed for running the dash tool

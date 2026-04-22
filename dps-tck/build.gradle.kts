@@ -21,6 +21,11 @@ dependencies {
     implementation(libs.tck.dsp.core)
     implementation(libs.tck.dsp.tck.runtime)
     implementation(libs.junit.platform.launcher)
+
+    testImplementation(project(":dps-testcases"))
+    testImplementation(libs.assertj)
+    testImplementation(libs.junit.jupiter.api)
+    testRuntimeOnly(libs.junit.platform.engine)
 }
 
 application {

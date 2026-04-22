@@ -23,6 +23,9 @@ import org.eclipse.dataspacetck.core.spi.system.SystemLauncher;
 import org.eclipse.dataspacetck.dps.system.api.pipeline.ControlPlaneSignalingPipeline;
 import org.eclipse.dataspacetck.dps.system.client.HttpControlPlaneClient;
 import org.eclipse.dataspacetck.dps.system.client.HttpDspClient;
+import org.eclipse.dataspacetck.dps.system.client.LocalControlPlaneClient;
+import org.eclipse.dataspacetck.dps.system.client.LocalDspClient;
+import org.eclipse.dataspacetck.dps.system.connector.LocalControlPlaneConnector;
 import org.eclipse.dataspacetck.dps.system.pipeline.ControlPlaneSignalingPipelineImpl;
 
 import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_PREFIX;
@@ -33,6 +36,7 @@ import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_PREF
  */
 public class DpsSystemLauncher implements SystemLauncher {
 
+    private static final String LOCAL_CONNECTOR_CONFIG = TCK_PREFIX + ".dps.local.connector";
     private static final String CONTROL_PLANE_WEBHOOK_URL_CONFIG = TCK_PREFIX + ".dps.controlplane.webhook.url";
     private static final String CONTROL_PLANE_PROTOCOL_URL_CONFIG = TCK_PREFIX + ".dps.controlplane.protocol.url";
     private static final int DEFAULT_WAIT_SECONDS = 15;
@@ -41,14 +45,18 @@ public class DpsSystemLauncher implements SystemLauncher {
     private String controlPlaneWebhookUrl;
     private String controlPlaneProtocolUrl;
     private long waitTime = DEFAULT_WAIT_SECONDS;
+    private boolean useLocalConnector;
     private Monitor monitor;
 
     @Override
     public void start(SystemConfiguration configuration) {
         monitor = configuration.getMonitor();
         waitTime = configuration.getPropertyAsLong(DEFAULT_WAIT_CONFIG, DEFAULT_WAIT_SECONDS);
-        controlPlaneWebhookUrl = getRequiredStringSetting(configuration, CONTROL_PLANE_WEBHOOK_URL_CONFIG);
-        controlPlaneProtocolUrl = getRequiredStringSetting(configuration, CONTROL_PLANE_PROTOCOL_URL_CONFIG);
+        useLocalConnector = configuration.getPropertyAsBoolean(LOCAL_CONNECTOR_CONFIG, false);
+        if (!useLocalConnector) {
+            controlPlaneWebhookUrl = getRequiredStringSetting(configuration, CONTROL_PLANE_WEBHOOK_URL_CONFIG);
+            controlPlaneProtocolUrl = getRequiredStringSetting(configuration, CONTROL_PLANE_PROTOCOL_URL_CONFIG);
+        }
     }
 
     @Override
@@ -60,6 +68,12 @@ public class DpsSystemLauncher implements SystemLauncher {
     public <T> T getService(Class<T> type, ServiceConfiguration configuration, ServiceResolver resolver) {
         if (ControlPlaneSignalingPipeline.class.equals(type)) {
             var callbackEndpoint = (CallbackEndpoint) resolver.resolve(CallbackEndpoint.class, configuration);
+            if (useLocalConnector) {
+                var connector = new LocalControlPlaneConnector(monitor);
+                var controlPlaneClient = new LocalControlPlaneClient(connector);
+                var dspClient = new LocalDspClient(connector);
+                return type.cast(new ControlPlaneSignalingPipelineImpl(controlPlaneClient, dspClient, callbackEndpoint, monitor, waitTime));
+            }
             var controlPlaneClient = new HttpControlPlaneClient(controlPlaneWebhookUrl, monitor);
             var dspClient = new HttpDspClient(controlPlaneProtocolUrl, monitor);
             return type.cast(new ControlPlaneSignalingPipelineImpl(controlPlaneClient, dspClient, callbackEndpoint, monitor, waitTime));

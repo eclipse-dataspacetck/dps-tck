@@ -50,7 +50,7 @@ public class HttpDspClient implements DspClient {
             var request = new Request.Builder()
                     .url(url)
                     .addHeader("Authorization", MAPPER.writeValueAsString(Map.of(
-                            "clientId","providerId"
+                            "clientId", "providerId"
                     )))
                     .get()
                     .build();
