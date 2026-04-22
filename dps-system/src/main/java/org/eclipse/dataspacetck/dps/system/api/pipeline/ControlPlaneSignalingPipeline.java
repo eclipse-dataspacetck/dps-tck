@@ -40,6 +40,8 @@ public interface ControlPlaneSignalingPipeline extends AsyncPipeline<ControlPlan
      */
     ControlPlaneSignalingPipeline thenWaitForPrepareMessage();
 
+    ControlPlaneSignalingPipeline thenWaitForDataFlowStartMessage();
+
     /**
      * Registers a handler on the TCK data plane endpoint for the completed notification
      * ({@code POST /dataflows/{processId}/completed}) that the control plane sends when
@@ -64,4 +66,17 @@ public interface ControlPlaneSignalingPipeline extends AsyncPipeline<ControlPlan
      */
     ControlPlaneSignalingPipeline thenWaitForTerminateMessage();
 
+    ControlPlaneSignalingPipeline expectDataFlowStartMessage();
+
+    ControlPlaneSignalingPipeline thenWaitForTransferRequestMessage();
+
+    ControlPlaneSignalingPipeline thenWaitForTransferToBeInState(String state);
+
+    ControlPlaneSignalingPipeline sendTransferRequestMessage(String agreementId, String transferType);
+
+    ControlPlaneSignalingPipeline sendTransferStartMessage(String processId);
+
+    ControlPlaneSignalingPipeline sendTransferCompletionMessage(String processId);
+
+    ControlPlaneSignalingPipeline sendTransferTerminationMessage(String processId);
 }

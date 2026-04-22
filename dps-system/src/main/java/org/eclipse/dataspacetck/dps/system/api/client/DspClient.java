@@ -23,4 +23,6 @@ public interface DspClient {
     void sendTransferCompletionMessage(String processId);
 
     void sendTransferTerminationMessage(String processId);
+
+    String sendTransferRequestMessage(String address, String agreementId, String transferType);
 }

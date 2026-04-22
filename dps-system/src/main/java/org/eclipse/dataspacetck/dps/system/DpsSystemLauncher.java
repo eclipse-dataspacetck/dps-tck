@@ -21,11 +21,9 @@ import org.eclipse.dataspacetck.core.spi.system.ServiceResolver;
 import org.eclipse.dataspacetck.core.spi.system.SystemConfiguration;
 import org.eclipse.dataspacetck.core.spi.system.SystemLauncher;
 import org.eclipse.dataspacetck.dps.system.api.pipeline.ControlPlaneSignalingPipeline;
-import org.eclipse.dataspacetck.dps.system.api.pipeline.DspPipeline;
 import org.eclipse.dataspacetck.dps.system.client.HttpControlPlaneClient;
 import org.eclipse.dataspacetck.dps.system.client.HttpDspClient;
 import org.eclipse.dataspacetck.dps.system.pipeline.ControlPlaneSignalingPipelineImpl;
-import org.eclipse.dataspacetck.dps.system.pipeline.DspPipelineImpl;
 
 import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_PREFIX;
 
@@ -62,13 +60,9 @@ public class DpsSystemLauncher implements SystemLauncher {
     public <T> T getService(Class<T> type, ServiceConfiguration configuration, ServiceResolver resolver) {
         if (ControlPlaneSignalingPipeline.class.equals(type)) {
             var callbackEndpoint = (CallbackEndpoint) resolver.resolve(CallbackEndpoint.class, configuration);
-            var client = new HttpControlPlaneClient(controlPlaneWebhookUrl, monitor);
-            return type.cast(new ControlPlaneSignalingPipelineImpl(client, callbackEndpoint, monitor, waitTime));
-        }
-        if (DspPipeline.class.equals(type)) {
-            var callbackEndpoint = (CallbackEndpoint) resolver.resolve(CallbackEndpoint.class, configuration);
-            var client = new HttpDspClient(controlPlaneProtocolUrl, monitor);
-            return type.cast(new DspPipelineImpl(client, callbackEndpoint, monitor, waitTime));
+            var controlPlaneClient = new HttpControlPlaneClient(controlPlaneWebhookUrl, monitor);
+            var dspClient = new HttpDspClient(controlPlaneProtocolUrl, monitor);
+            return type.cast(new ControlPlaneSignalingPipelineImpl(controlPlaneClient, dspClient, callbackEndpoint, monitor, waitTime));
         }
         return null;
     }

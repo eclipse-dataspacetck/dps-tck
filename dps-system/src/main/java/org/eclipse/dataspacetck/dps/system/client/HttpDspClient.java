@@ -24,6 +24,7 @@ import org.eclipse.dataspacetck.dps.system.api.client.DspClient;
 import org.jspecify.annotations.NonNull;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 
@@ -55,13 +56,7 @@ public class HttpDspClient implements DspClient {
                     .build();
 
             monitor.debug("DSP GET TransferProcess " + url);
-            try (var response = httpClient.newCall(request).execute()) {
-                if (!response.isSuccessful()) {
-                    throw new RuntimeException("Failed to signal data flow completion: HTTP " + response.code());
-                }
-
-                return MAPPER.readValue(response.body().byteStream(), Map.class).get("state").toString();
-            }
+            return execute(request).get("state").toString();
         } catch (IOException e) {
             throw new RuntimeException("Failed to signal data flow completion", e);
         }
@@ -69,42 +64,67 @@ public class HttpDspClient implements DspClient {
 
     @Override
     public void sendTransferStartMessage(String processId) {
-        send(protocolUrl + "/transfers/" + processId + "/start", processId, "TransferStartMessage");
+        var requestBody = message(processId, "TransferStartMessage");
+        send(protocolUrl + "/transfers/" + processId + "/start", requestBody, "providerId");
     }
 
     @Override
     public void sendTransferCompletionMessage(String processId) {
-        send(protocolUrl + "/transfers/" + processId + "/completion", processId, "TransferCompletionMessage");
+        var requestBody = message(processId, "TransferCompletionMessage");
+        send(protocolUrl + "/transfers/" + processId + "/completion", requestBody, "providerId");
     }
 
     @Override
     public void sendTransferTerminationMessage(String processId) {
-        send(protocolUrl + "/transfers/" + processId + "/termination", processId, "TransferTerminationMessage");
+        var requestBody = message(processId, "TransferTerminationMessage");
+        send(protocolUrl + "/transfers/" + processId + "/termination", requestBody, "providerId");
     }
 
-    private void send(String url, String processId, String type) {
-        try {
-            monitor.debug("Send DSP " + type);
+    @Override
+    public String sendTransferRequestMessage(String address, String agreementId, String transferType) {
+        var requestBody = Map.of(
+                "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
+                "@type", "TransferRequestMessage",
+                "consumerPid", UUID.randomUUID().toString(),
+                "callbackAddress", address,
+                "agreementId", agreementId,
+                "format", transferType
+        );
+        var response = send(protocolUrl + "/transfers/request", requestBody, "consumerId");
+        return response.get("providerPid").toString();
+    }
 
-            var body = message(processId, type);
+    private Map<String, Object> send(String url, Map<String, String> requestBody, String senderId) {
+        try {
+            monitor.debug("Send DSP " + requestBody.get("@type"));
+
             var request = new Request.Builder()
                     .url(url)
                     .addHeader("Authorization", MAPPER.writeValueAsString(Map.of(
-                            "clientId","providerId"
+                            "clientId", senderId
                     )))
-                    .post(RequestBody.create(MAPPER.writeValueAsString(body), JSON))
+                    .post(RequestBody.create(MAPPER.writeValueAsString(requestBody), JSON))
                     .build();
 
-            monitor.debug("DSP TransferTerminationMessage " + url);
-            try (var response = httpClient.newCall(request).execute()) {
-                if (!response.isSuccessful()) {
-                    throw new RuntimeException("Failed to send DSP message to %s. Status: %s".formatted(url, response.code()));
-                }
-            }
+            return execute(request);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to send DSP message", e);
+            throw new RuntimeException("Failed to send DSP message: " + e.getMessage(), e);
         }
 
+    }
+
+    private Map<String, Object> execute(Request request) throws IOException {
+        try (var response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new RuntimeException("Failed to send DSP message to %s. Status: %s".formatted(request.url().toString(), response.code()));
+            }
+
+            var body = response.body().string();
+            if (body.isBlank()) {
+                return Collections.emptyMap();
+            }
+            return MAPPER.readValue(body, Map.class);
+        }
     }
 
     private static @NonNull Map<String, String> message(String processId, String type) {
@@ -115,5 +135,6 @@ public class HttpDspClient implements DspClient {
                 "consumerPid", UUID.randomUUID().toString()
         );
     }
+
 
 }
