@@ -25,6 +25,27 @@ import org.junit.jupiter.api.Tag;
 
 import static java.util.UUID.randomUUID;
 
+/**
+ * Verifies compliance of a provider control plane with the Data Plane Signaling specification.
+ *
+ * <p>The TCK acts simultaneously as the <em>provider data plane</em> (receiving DPS signals from the CUT)
+ * and as the <em>consumer control plane</em> (initiating DSP transfer-process messages to the CUT).
+ *
+ * <p>Interactions covered:
+ * <ul>
+ *   <li>{@code POST /dataflows/start} — DataFlowStartMessage dispatch after DSP TransferRequestMessage</li>
+ *   <li>{@code POST /dataflows/{id}/suspend} — DataFlowSuspendMessage dispatch after DSP TransferSuspensionMessage</li>
+ *   <li>{@code POST /dataflows/{id}/resume} — DataFlowResumeMessage dispatch after DSP TransferResumptionMessage</li>
+ *   <li>{@code POST /dataflows/{id}/completed} — completed notification dispatch after DSP TransferCompletionMessage</li>
+ *   <li>{@code POST /dataflows/{id}/terminate} — terminate notification dispatch after DSP TransferTerminationMessage</li>
+ * </ul>
+ *
+ * <p>Interactions <strong>not yet covered</strong> (require pipeline extension):
+ * <ul>
+ *   <li>Asynchronous start transition (HTTP 202 + {@code /dataflow/started} callback to the CP)</li>
+ *   <li>The {@code /transfers/:transferId/dataflow/errored} callback from DP to CP on non-recoverable error</li>
+ * </ul>
+ */
 @Tag("base-compliance")
 @DisplayName("CP_P: Control plane provider signaling scenarios")
 public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest {
@@ -41,48 +62,54 @@ public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest 
     @MandatoryTest
     @DisplayName("CP_P:01-01: Verify DataFlowStartMessage is dispatched when a transfer request is received and completed notification is sent to the data plane")
     @TestSequenceDiagram("""
-            participant TCK as Technology Compatibility Kit (consumer CP + data plane)
-            participant CUT as Control-Plane Under Test (provider CP)
+            participant TCK as Technology Compatibility Kit (consumer CP + provider data plane)
+            participant CUT as Provider Control-Plane Under Test
 
             TCK->>CUT: DSP TransferRequestMessage (POST /transfers/request)
             CUT->>TCK: DataFlowStartMessage (POST /dataflows/start)
             TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=STARTED)
             TCK->>CUT: DSP TransferCompletionMessage (POST /transfers/{id}/completion)
+            CUT->>TCK: Completed notification (POST /dataflows/{processId}/completed)
             """)
     public void cp_p_01_01() {
         signalingPipeline
                 .expectDataFlowStartMessage()
                 .sendTransferRequestMessage(agreementId, "HttpData-PULL")
                 .thenWaitForDataFlowStartMessage()
+                .expectDataFlowCompletedMessage(processId)
                 .sendTransferCompletionMessage(processId)
+                .thenWaitForCompletedMessage()
                 .execute();
     }
 
     @MandatoryTest
     @DisplayName("CP_P:01-02: Verify DataFlowStartMessage is dispatched when a transfer request is received and terminate notification is sent to the data plane")
     @TestSequenceDiagram("""
-            participant TCK as Technology Compatibility Kit (consumer CP + data plane)
-            participant CUT as Control-Plane Under Test (provider CP)
+            participant TCK as Technology Compatibility Kit (consumer CP + provider data plane)
+            participant CUT as Provider Control-Plane Under Test
 
             TCK->>CUT: DSP TransferRequestMessage (POST /transfers/request)
             CUT->>TCK: DataFlowStartMessage (POST /dataflows/start)
             TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=STARTED)
             TCK->>CUT: DSP TransferTerminationMessage (POST /transfers/{id}/termination)
+            CUT->>TCK: Terminate notification (POST /dataflows/{processId}/terminate)
             """)
     public void cp_p_01_02() {
         signalingPipeline
                 .expectDataFlowStartMessage()
                 .sendTransferRequestMessage(agreementId, "HttpData-PULL")
                 .thenWaitForDataFlowStartMessage()
+                .expectDataFlowTerminateMessage(processId)
                 .sendTransferTerminationMessage(processId)
+                .thenWaitForTerminateMessage()
                 .execute();
     }
 
     @MandatoryTest
     @DisplayName("CP_P:02-01: Verify DataFlowSuspendMessage and DataFlowResumeMessage are dispatched when transfer is suspended and resumed, and completed notification is sent")
     @TestSequenceDiagram("""
-            participant TCK as Technology Compatibility Kit (consumer CP + data plane)
-            participant CUT as Control-Plane Under Test (provider CP)
+            participant TCK as Technology Compatibility Kit (consumer CP + provider data plane)
+            participant CUT as Provider Control-Plane Under Test
 
             TCK->>CUT: DSP TransferRequestMessage (POST /transfers/request)
             CUT->>TCK: DataFlowStartMessage (POST /dataflows/start)
@@ -94,6 +121,7 @@ public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest 
             CUT->>TCK: DataFlowResumeMessage (POST /dataflows/{processId}/resume)
             TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferCompletionMessage (POST /transfers/{id}/completion)
+            CUT->>TCK: Completed notification (POST /dataflows/{processId}/completed)
             """)
     public void cp_p_02_01() {
         signalingPipeline
@@ -106,15 +134,17 @@ public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest 
                 .expectDataFlowResumeMessage(processId)
                 .sendTransferResumptionMessage(processId)
                 .thenWaitForResumeMessage()
+                .expectDataFlowCompletedMessage(processId)
                 .sendTransferCompletionMessage(processId)
+                .thenWaitForCompletedMessage()
                 .execute();
     }
 
     @MandatoryTest
     @DisplayName("CP_P:02-02: Verify DataFlowSuspendMessage is dispatched when transfer is suspended and terminate notification is sent")
     @TestSequenceDiagram("""
-            participant TCK as Technology Compatibility Kit (consumer CP + data plane)
-            participant CUT as Control-Plane Under Test (provider CP)
+            participant TCK as Technology Compatibility Kit (consumer CP + provider data plane)
+            participant CUT as Provider Control-Plane Under Test
 
             TCK->>CUT: DSP TransferRequestMessage (POST /transfers/request)
             CUT->>TCK: DataFlowStartMessage (POST /dataflows/start)
@@ -123,6 +153,7 @@ public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest 
             CUT->>TCK: DataFlowSuspendMessage (POST /dataflows/{processId}/suspend)
             TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferTerminationMessage (POST /transfers/{id}/termination)
+            CUT->>TCK: Terminate notification (POST /dataflows/{processId}/terminate)
             """)
     public void cp_p_02_02() {
         signalingPipeline
@@ -132,7 +163,9 @@ public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest 
                 .expectDataFlowSuspendMessage(processId)
                 .sendTransferSuspensionMessage(processId)
                 .thenWaitForSuspendMessage()
+                .expectDataFlowTerminateMessage(processId)
                 .sendTransferTerminationMessage(processId)
+                .thenWaitForTerminateMessage()
                 .execute();
     }
 }

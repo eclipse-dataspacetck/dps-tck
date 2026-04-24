@@ -25,6 +25,28 @@ import org.junit.jupiter.api.Tag;
 
 import static java.util.UUID.randomUUID;
 
+/**
+ * Verifies compliance of a consumer control plane with the Data Plane Signaling specification.
+ *
+ * <p>The TCK acts simultaneously as the <em>consumer data plane</em> (receiving DPS signals from the CUT)
+ * and as the <em>provider control plane</em> (exchanging DSP messages with the CUT).
+ *
+ * <p>Interactions covered:
+ * <ul>
+ *   <li>{@code POST /dataflows/prepare} — DataFlowPrepareMessage dispatch</li>
+ *   <li>{@code POST /dataflows/{id}/suspend} — DataFlowSuspendMessage dispatch</li>
+ *   <li>{@code POST /dataflows/{id}/resume} — DataFlowResumeMessage dispatch</li>
+ *   <li>{@code POST /dataflows/{id}/completed} — completed notification dispatch</li>
+ *   <li>{@code POST /dataflows/{id}/terminate} — terminate notification dispatch</li>
+ * </ul>
+ *
+ * <p>Interactions <strong>not yet covered</strong> (require pipeline extension): TODO!
+ * <ul>
+ *   <li>{@code POST /dataflows/{id}/started} — DataFlowStartedNotificationMessage that the consumer CP
+ *       must send to the consumer DP after receiving a DSP TransferStartMessage</li>
+ *   <li>Asynchronous prepare/start transitions (HTTP 202 + {@code /dataflow/prepared} callback)</li>
+ * </ul>
+ */
 @Tag("base-compliance")
 @DisplayName("CP_C: Control plane consumer signaling scenarios")
 public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest {
@@ -44,13 +66,17 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
     @MandatoryTest
     @DisplayName("CP_C:01-01: Verify DataFlowPrepareMessage is dispatched and completed notification is sent to the data plane")
     @TestSequenceDiagram("""
-            participant TCK as Technology Compatibility Kit (data plane)
-            participant CUT as Control-Plane Under Test
+            participant TCK as Technology Compatibility Kit (consumer data plane + provider CP)
+            participant CUT as Consumer Control-Plane Under Test
 
-            TCK->>CUT: Signal to start data flow preparation
+            TCK->>CUT: Trigger data flow preparation (internal signal)
             CUT->>TCK: DataFlowPrepareMessage (POST /dataflows/prepare)
             TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=PREPARING)
-            TCK->>CUT: Signal transfer process completion
+            CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
+            TCK-->>CUT: 200 OK + providerPid
+            TCK->>CUT: DSP TransferStartMessage
+            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started) [not yet verified]
+            TCK->>CUT: DSP TransferCompletionMessage
             CUT->>TCK: Completed notification (POST /dataflows/{processId}/completed)
             """)
     public void cp_c_01_01() {
@@ -70,16 +96,20 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
     }
 
     @MandatoryTest
-    @DisplayName("CP_C:01-02: Verify DataFlowPrepareMessage is dispatched and terminated is sent to the data plane")
+    @DisplayName("CP_C:01-02: Verify DataFlowPrepareMessage is dispatched and terminate notification is sent to the data plane")
     @TestSequenceDiagram("""
-            participant TCK as Technology Compatibility Kit (data plane)
-            participant CUT as Control-Plane Under Test
+            participant TCK as Technology Compatibility Kit (consumer data plane + provider CP)
+            participant CUT as Consumer Control-Plane Under Test
 
-            TCK->>CUT: Signal to start data flow preparation
+            TCK->>CUT: Trigger data flow preparation (internal signal)
             CUT->>TCK: DataFlowPrepareMessage (POST /dataflows/prepare)
             TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=PREPARING)
-            TCK->>CUT: Signal transfer process termination
-            CUT->>TCK: Completed notification (POST /dataflows/{processId}/terminate)
+            CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
+            TCK-->>CUT: 200 OK + providerPid
+            TCK->>CUT: DSP TransferStartMessage
+            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started) [not yet verified]
+            TCK->>CUT: DSP TransferTerminationMessage
+            CUT->>TCK: Terminate notification (POST /dataflows/{processId}/terminate)
             """)
     public void cp_c_01_02() {
         signalingPipeline
@@ -100,20 +130,23 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
     @MandatoryTest
     @DisplayName("CP_C:02-01: Verify DataFlowSuspendMessage and DataFlowResumeMessage are dispatched to the data plane and completed notification is sent")
     @TestSequenceDiagram("""
-            participant TCK as Technology Compatibility Kit (data plane)
-            participant CUT as Control-Plane Under Test
+            participant TCK as Technology Compatibility Kit (consumer data plane + provider CP)
+            participant CUT as Consumer Control-Plane Under Test
 
-            TCK->>CUT: Signal to start data flow preparation
+            TCK->>CUT: Trigger data flow preparation (internal signal)
             CUT->>TCK: DataFlowPrepareMessage (POST /dataflows/prepare)
             TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=PREPARING)
-            TCK->>CUT: Signal transfer process start
-            TCK->>CUT: Signal transfer process suspension
+            CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
+            TCK-->>CUT: 200 OK + providerPid
+            TCK->>CUT: DSP TransferStartMessage
+            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started) [not yet verified]
+            TCK->>CUT: DSP TransferSuspensionMessage
             CUT->>TCK: DataFlowSuspendMessage (POST /dataflows/{processId}/suspend)
             TCK-->>CUT: 200 OK
-            TCK->>CUT: Signal transfer process resumption
+            TCK->>CUT: DSP TransferResumptionMessage
             CUT->>TCK: DataFlowResumeMessage (POST /dataflows/{processId}/resume)
             TCK-->>CUT: 200 OK
-            TCK->>CUT: Signal transfer process completion
+            TCK->>CUT: DSP TransferCompletionMessage
             CUT->>TCK: Completed notification (POST /dataflows/{processId}/completed)
             """)
     public void cp_c_02_01() {
@@ -139,19 +172,22 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
     }
 
     @MandatoryTest
-    @DisplayName("CP_C:02-02: Verify DataFlowSuspendMessage is dispatched to the data plane and terminated notification is sent")
+    @DisplayName("CP_C:02-02: Verify DataFlowSuspendMessage is dispatched to the data plane and terminate notification is sent")
     @TestSequenceDiagram("""
-            participant TCK as Technology Compatibility Kit (data plane)
-            participant CUT as Control-Plane Under Test
+            participant TCK as Technology Compatibility Kit (consumer data plane + provider CP)
+            participant CUT as Consumer Control-Plane Under Test
 
-            TCK->>CUT: Signal to start data flow preparation
+            TCK->>CUT: Trigger data flow preparation (internal signal)
             CUT->>TCK: DataFlowPrepareMessage (POST /dataflows/prepare)
             TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=PREPARING)
-            TCK->>CUT: Signal transfer process start
-            TCK->>CUT: Signal transfer process suspension
+            CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
+            TCK-->>CUT: 200 OK + providerPid
+            TCK->>CUT: DSP TransferStartMessage
+            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started) [not yet verified]
+            TCK->>CUT: DSP TransferSuspensionMessage
             CUT->>TCK: DataFlowSuspendMessage (POST /dataflows/{processId}/suspend)
             TCK-->>CUT: 200 OK
-            TCK->>CUT: Signal transfer process termination
+            TCK->>CUT: DSP TransferTerminationMessage
             CUT->>TCK: Terminate notification (POST /dataflows/{processId}/terminate)
             """)
     public void cp_c_02_02() {
