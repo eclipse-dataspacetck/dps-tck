@@ -53,4 +53,14 @@ public class LocalDspClient implements DspClient {
     public String sendTransferRequestMessage(String address, String agreementId, String transferType) {
         return connector.receiveTransferRequestMessage(address, agreementId);
     }
+
+    @Override
+    public void sendTransferSuspensionMessage(String processId) {
+        connector.receiveTransferSuspension(processId);
+    }
+
+    @Override
+    public void sendTransferResumptionMessage(String processId) {
+        connector.receiveTransferResumption(processId);
+    }
 }

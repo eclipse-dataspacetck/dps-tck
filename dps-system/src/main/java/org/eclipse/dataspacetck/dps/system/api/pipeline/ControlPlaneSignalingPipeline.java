@@ -36,18 +36,13 @@ public interface ControlPlaneSignalingPipeline extends AsyncPipeline<ControlPlan
     ControlPlaneSignalingPipeline expectDataFlowPrepareMessage();
 
     /**
-     * Waits until the TCK data plane has received the DataFlowPrepareMessage.
-     */
-    ControlPlaneSignalingPipeline thenWaitForPrepareMessage();
-
-    ControlPlaneSignalingPipeline thenWaitForDataFlowStartMessage();
-
-    /**
      * Registers a handler on the TCK data plane endpoint for the completed notification
      * ({@code POST /dataflows/{processId}/completed}) that the control plane sends when
      * the transfer process completes.
      */
     ControlPlaneSignalingPipeline expectDataFlowCompletedMessage(String processId);
+
+    ControlPlaneSignalingPipeline expectDataFlowStartMessage();
 
     /**
      * Registers a handler on the TCK data plane endpoint for the terminate message
@@ -55,6 +50,28 @@ public interface ControlPlaneSignalingPipeline extends AsyncPipeline<ControlPlan
      * the transfer process completes.
      */
     ControlPlaneSignalingPipeline expectDataFlowTerminateMessage(String processId);
+
+    /**
+     * Registers a handler on the TCK data plane endpoint for the suspend message
+     * ({@code POST /dataflows/{processId}/suspend}) that the control plane sends when
+     * the transfer process is suspended.
+     */
+    ControlPlaneSignalingPipeline expectDataFlowSuspendMessage(String processId);
+
+    /**
+     * Registers a handler on the TCK data plane endpoint for the resume message
+     * ({@code POST /dataflows/{processId}/resume}) that the control plane sends when
+     * the transfer process is resumed.
+     */
+    ControlPlaneSignalingPipeline expectDataFlowResumeMessage(String processId);
+
+    /**
+     * Waits until the TCK data plane has received the DataFlowPrepareMessage.
+     */
+    ControlPlaneSignalingPipeline thenWaitForPrepareMessage();
+
+    ControlPlaneSignalingPipeline thenWaitForDataFlowStartMessage();
+
 
     /**
      * Waits until the TCK data plane has received the completed notification.
@@ -65,8 +82,6 @@ public interface ControlPlaneSignalingPipeline extends AsyncPipeline<ControlPlan
      * Waits until the TCK data plane has received the terminate message.
      */
     ControlPlaneSignalingPipeline thenWaitForTerminateMessage();
-
-    ControlPlaneSignalingPipeline expectDataFlowStartMessage();
 
     ControlPlaneSignalingPipeline thenWaitForTransferRequestMessage();
 
@@ -79,5 +94,19 @@ public interface ControlPlaneSignalingPipeline extends AsyncPipeline<ControlPlan
     ControlPlaneSignalingPipeline sendTransferCompletionMessage(String processId);
 
     ControlPlaneSignalingPipeline sendTransferTerminationMessage(String processId);
+
+    /**
+     * Waits until the TCK data plane has received the suspend message.
+     */
+    ControlPlaneSignalingPipeline thenWaitForSuspendMessage();
+
+    /**
+     * Waits until the TCK data plane has received the resume message.
+     */
+    ControlPlaneSignalingPipeline thenWaitForResumeMessage();
+
+    ControlPlaneSignalingPipeline sendTransferSuspensionMessage(String processId);
+
+    ControlPlaneSignalingPipeline sendTransferResumptionMessage(String processId);
 
 }

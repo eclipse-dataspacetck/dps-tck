@@ -89,6 +89,34 @@ public class LocalControlPlaneConnector {
         }
     }
 
+    public void receiveTransferSuspension(String processId) {
+        monitor.debug("Local CUT: transfer suspended for processId=" + processId);
+        transferStates.put(processId, "SUSPENDED");
+        var baseUrl = dataPlaneBaseUrl.get();
+        if (baseUrl != null) {
+            try {
+                var body = MAPPER.writeValueAsString(Map.of("reason", "suspended by consumer"));
+                sendAsync(baseUrl + "/dataflows/" + processId + "/suspend", body, "suspend notification");
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to build DataFlowSuspendMessage", e);
+            }
+        }
+    }
+
+    public void receiveTransferResumption(String processId) {
+        monitor.debug("Local CUT: transfer resumed for processId=" + processId);
+        transferStates.put(processId, "STARTED");
+        var baseUrl = dataPlaneBaseUrl.get();
+        if (baseUrl != null) {
+            try {
+                var body = MAPPER.writeValueAsString(Map.of("messageId", UUID.randomUUID().toString(), "processId", processId));
+                sendAsync(baseUrl + "/dataflows/" + processId + "/resume", body, "resume notification");
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to build DataFlowResumeMessage", e);
+            }
+        }
+    }
+
     /**
      * Simulates the CUT receiving a DSP TransferRequestMessage from the TCK.
      * Returns a providerPid and asynchronously sends a DataFlowStartMessage to the TCK.

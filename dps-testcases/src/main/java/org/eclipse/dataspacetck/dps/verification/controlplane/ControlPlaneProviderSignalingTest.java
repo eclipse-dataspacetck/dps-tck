@@ -106,4 +106,91 @@ public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest 
         assertThat(received).containsKey("transferType");
         assertThat(received).containsKey("claims");
     }
+
+    @MandatoryTest
+    @DisplayName("CP_P:02-01: Verify DataFlowSuspendMessage and DataFlowResumeMessage are dispatched when transfer is suspended and resumed, and completed notification is sent")
+    @TestSequenceDiagram("""
+            participant TCK as Technology Compatibility Kit (consumer CP + data plane)
+            participant CUT as Control-Plane Under Test (provider CP)
+
+            TCK->>CUT: DSP TransferRequestMessage (POST /transfers/request)
+            CUT->>TCK: DataFlowStartMessage (POST /dataflows/start)
+            TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=STARTED)
+            TCK->>CUT: DSP TransferSuspensionMessage (POST /transfers/{id}/suspension)
+            CUT->>TCK: DataFlowSuspendMessage (POST /dataflows/{processId}/suspend)
+            TCK-->>CUT: 200 OK
+            TCK->>CUT: DSP TransferResumptionMessage (POST /transfers/{id}/resumption)
+            CUT->>TCK: DataFlowResumeMessage (POST /dataflows/{processId}/resume)
+            TCK-->>CUT: 200 OK
+            TCK->>CUT: DSP TransferCompletionMessage (POST /transfers/{id}/completion)
+            """)
+    public void cp_p_02_01() {
+        signalingPipeline
+                .expectDataFlowStartMessage()
+                .sendTransferRequestMessage(agreementId, "HttpData-PULL")
+                .thenWaitForDataFlowStartMessage()
+                .expectDataFlowSuspendMessage(processId)
+                .sendTransferSuspensionMessage(processId)
+                .thenWaitForSuspendMessage()
+                .expectDataFlowResumeMessage(processId)
+                .sendTransferResumptionMessage(processId)
+                .thenWaitForResumeMessage()
+                .sendTransferCompletionMessage(processId)
+                .execute();
+
+        var received = ((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedStartMessage();
+
+        assertThat(received).isNotNull();
+        assertThat(received).containsKey("messageId");
+        assertThat(received).containsKey("participantId");
+        assertThat(received).containsKey("counterPartyId");
+        assertThat(received).containsKey("dataspaceContext");
+        assertThat(received).containsKey("processId");
+        assertThat(received).containsKey("agreementId");
+        assertThat(received).containsKey("transferType");
+        assertThat(received).containsKey("claims");
+
+        assertThat(((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedSuspendMessage()).isNotNull();
+        assertThat(((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedResumeMessage()).isNotNull();
+    }
+
+    @MandatoryTest
+    @DisplayName("CP_P:02-02: Verify DataFlowSuspendMessage is dispatched when transfer is suspended and terminate notification is sent")
+    @TestSequenceDiagram("""
+            participant TCK as Technology Compatibility Kit (consumer CP + data plane)
+            participant CUT as Control-Plane Under Test (provider CP)
+
+            TCK->>CUT: DSP TransferRequestMessage (POST /transfers/request)
+            CUT->>TCK: DataFlowStartMessage (POST /dataflows/start)
+            TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=STARTED)
+            TCK->>CUT: DSP TransferSuspensionMessage (POST /transfers/{id}/suspension)
+            CUT->>TCK: DataFlowSuspendMessage (POST /dataflows/{processId}/suspend)
+            TCK-->>CUT: 200 OK
+            TCK->>CUT: DSP TransferTerminationMessage (POST /transfers/{id}/termination)
+            """)
+    public void cp_p_02_02() {
+        signalingPipeline
+                .expectDataFlowStartMessage()
+                .sendTransferRequestMessage(agreementId, "HttpData-PULL")
+                .thenWaitForDataFlowStartMessage()
+                .expectDataFlowSuspendMessage(processId)
+                .sendTransferSuspensionMessage(processId)
+                .thenWaitForSuspendMessage()
+                .sendTransferTerminationMessage(processId)
+                .execute();
+
+        var received = ((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedStartMessage();
+
+        assertThat(received).isNotNull();
+        assertThat(received).containsKey("messageId");
+        assertThat(received).containsKey("participantId");
+        assertThat(received).containsKey("counterPartyId");
+        assertThat(received).containsKey("dataspaceContext");
+        assertThat(received).containsKey("processId");
+        assertThat(received).containsKey("agreementId");
+        assertThat(received).containsKey("transferType");
+        assertThat(received).containsKey("claims");
+
+        assertThat(((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedSuspendMessage()).isNotNull();
+    }
 }

@@ -81,6 +81,18 @@ public class HttpDspClient implements DspClient {
     }
 
     @Override
+    public void sendTransferSuspensionMessage(String processId) {
+        var requestBody = message(processId, "TransferSuspensionMessage");
+        send(protocolUrl + "/transfers/" + processId + "/suspension", requestBody, "providerId");
+    }
+
+    @Override
+    public void sendTransferResumptionMessage(String processId) {
+        var requestBody = message(processId, "TransferResumptionMessage");
+        send(protocolUrl + "/transfers/" + processId + "/resumption", requestBody, "providerId");
+    }
+
+    @Override
     public String sendTransferRequestMessage(String address, String agreementId, String transferType) {
         var requestBody = Map.of(
                 "@context", "https://w3id.org/dspace/2025/1/context.jsonld",

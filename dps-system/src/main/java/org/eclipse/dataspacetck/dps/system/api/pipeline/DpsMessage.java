@@ -18,16 +18,18 @@ import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaLocation;
 import com.networknt.schema.SchemaRegistry;
 
-public enum DpsMessages {
+public enum DpsMessage {
     DataFlowPrepareMessage,
     DataFlowStartMessage,
-    DataFlowTerminateMessage;
+    DataFlowTerminateMessage,
+    DataFlowSuspendMessage,
+    DataFlowResumeMessage;
 
     public static final String DSPACE_SIG_NAMESPACE = "https://w3id.org/dspace-sig/v1.0";
 
     private final Schema validator;
 
-    DpsMessages() {
+    DpsMessage() {
         validator = SchemaRegistry.builder()
                 .schemaIdResolvers(schemaIdResolvers -> schemaIdResolvers
                         .mapPrefix(DSPACE_SIG_NAMESPACE + "/", "classpath:schema/"))
