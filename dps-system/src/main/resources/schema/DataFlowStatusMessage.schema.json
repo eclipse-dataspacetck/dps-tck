@@ -1,0 +1,34 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "DataFlowStatusMessage.json",
+    "title": "DataFlowStatusMessage",
+    "type": "object",
+    "properties": {
+        "dataFlowId": {
+            "type": "string"
+        },
+        "dataAddress": {
+            "$ref": "https://w3id.org/dspace/2025/1/transfer/data-address-schema.json"
+        },
+        "state": {
+            "type": "string",
+            "enum": [
+                "INITIALIZED",
+                "PREPARING",
+                "PREPARED",
+                "STARTING",
+                "STARTED",
+                "COMPLETED",
+                "SUSPENDED",
+                "TERMINATED"
+            ]
+        },
+        "error": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "dataFlowId",
+        "state"
+    ]
+}

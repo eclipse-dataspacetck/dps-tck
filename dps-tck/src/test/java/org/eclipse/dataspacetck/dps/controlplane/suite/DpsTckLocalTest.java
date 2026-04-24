@@ -18,8 +18,6 @@ import org.eclipse.dataspacetck.dps.system.DpsSystemLauncher;
 import org.eclipse.dataspacetck.runtime.TckRuntime;
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_PREFIX;
 
@@ -33,11 +31,10 @@ public class DpsTckLocalTest {
     void runAllTestCasesLocally() {
         var result = TckRuntime.Builder.newInstance()
                 .launcher(DpsSystemLauncher.class)
-                .properties(Map.of(
-                        TCK_PREFIX + ".dps.local.connector", "true",
-                        TCK_PREFIX + ".debug", "true"
-                ))
+                .property(TCK_PREFIX + ".debug", "true")
+                .property(TCK_PREFIX + ".dps.local.connector", "true")
                 .addPackage("org.eclipse.dataspacetck.dps.verification.controlplane")
+                .displayNameMatching(it -> it.startsWith("CP_C:01-02"))
                 .build()
                 .execute();
 

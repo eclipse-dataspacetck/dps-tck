@@ -181,7 +181,7 @@ public class LocalControlPlaneConnector {
                 .build();
         try (var response = httpClient.newCall(request).execute()) {
             if (!response.isSuccessful()) {
-                throw new RuntimeException("HTTP " + response.code() + " from " + url);
+                throw new RuntimeException("HTTP " + response.code() + " from " + url + ". Body: " + response.body().string());
             }
         }
     }

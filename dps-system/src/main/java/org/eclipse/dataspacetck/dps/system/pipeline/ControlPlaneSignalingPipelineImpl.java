@@ -14,7 +14,10 @@
 
 package org.eclipse.dataspacetck.dps.system.pipeline;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.networknt.schema.Schema;
+import com.networknt.schema.SchemaRegistry;
 import org.eclipse.dataspacetck.core.api.pipeline.AbstractAsyncPipeline;
 import org.eclipse.dataspacetck.core.api.system.CallbackEndpoint;
 import org.eclipse.dataspacetck.core.api.system.HandlerResponse;
@@ -22,13 +25,17 @@ import org.eclipse.dataspacetck.core.spi.boot.Monitor;
 import org.eclipse.dataspacetck.dps.system.api.client.ControlPlaneClient;
 import org.eclipse.dataspacetck.dps.system.api.client.DspClient;
 import org.eclipse.dataspacetck.dps.system.api.pipeline.ControlPlaneSignalingPipeline;
+import org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessages;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessages.DSPACE_SIG_NAMESPACE;
 
 /**
  * Pipeline that verifies the control plane under test dispatches a {@code DataFlowPrepareMessage}
@@ -39,7 +46,7 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
     private static final String PREPARE_PATH = "/dataflows/prepare";
     private static final String START_PATH = "/dataflows/start";
     private static final String COMPLETED_PATH_PATTERN = "/dataflows/[^/]+/completed";
-    private static final String TERMINATED_PATH_PATTERN = "/dataflows/[^/]+/terminate";
+    private static final String TERMINATE_PATH_PATTERN = "/dataflows/[^/]+/terminate";
     private static final String DSP_REQUEST_PATH = "/transfers/request";
     private static final String DSP_START_PATH_PATTERN = "/transfers/[^/]+/start";
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -54,6 +61,10 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
     private final AtomicReference<Map<String, Object>> receivedDspRequestMessage = new AtomicReference<>();
     private final AtomicReference<Map<String, Object>> receivedDspStartMessage = new AtomicReference<>();
     private final AtomicReference<String> counterPartyProcessId = new AtomicReference<>();
+    private final SchemaRegistry jsonSchemaRegistry = SchemaRegistry.builder()
+            .schemaIdResolvers(schemaIdResolvers -> schemaIdResolvers.mapPrefix(DSPACE_SIG_NAMESPACE + "/", "classpath:schema/"))
+            .build();
+    private final Map<String, Schema> validators = new HashMap<>();
 
     public ControlPlaneSignalingPipelineImpl(ControlPlaneClient controlPlaneClient,
                                              DspClient dspClient,
@@ -63,6 +74,7 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
         super(endpoint, monitor, waitTime);
         this.controlPlaneClient = controlPlaneClient;
         this.dspClient = dspClient;
+
 
         registerDspTransferRequestHandler();
         registerDspTransferStartHandler();
@@ -84,7 +96,14 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
         stages.add(() ->
                 endpoint.registerProtocolHandler(PREPARE_PATH, (headers, body) -> {
                     try {
-                        var message = MAPPER.readValue(body, Map.class);
+                        var node = MAPPER.readValue(body, JsonNode.class);
+                        var errors = DpsMessages.DataFlowPrepareMessage.getValidator().validate(node);
+
+                        if (!errors.isEmpty()) {
+                            return new HandlerResponse(400, "Error validating json schema: " + MAPPER.writeValueAsString(errors));
+                        }
+
+                        var message = MAPPER.convertValue(node, Map.class);
                         receivedPrepareMessage.set(message);
                         actualProcessId.set((String) message.get("processId"));
                         monitor.debug("Received DataFlowPrepareMessage from control plane, processId=" + actualProcessId.get());
@@ -106,7 +125,14 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
         stages.add(() ->
                 endpoint.registerProtocolHandler(START_PATH, (headers, body) -> {
                     try {
-                        var message = MAPPER.readValue(body, Map.class);
+                        var node = MAPPER.readValue(body, JsonNode.class);
+                        var errors = DpsMessages.DataFlowStartMessage.getValidator().validate(node);
+
+                        if (!errors.isEmpty()) {
+                            return new HandlerResponse(400, "Error validating json schema: " + MAPPER.writeValueAsString(errors));
+                        }
+
+                        var message = MAPPER.convertValue(node, Map.class);
                         receivedStartMessage.set(message);
                         actualProcessId.set((String) message.get("processId"));
                         monitor.debug("Received DataFlowStartMessage from control plane, processId=" + actualProcessId.get());
@@ -151,10 +177,21 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
         var latch = new CountDownLatch(1);
         expectLatches.add(latch);
         stages.add(() ->
-                endpoint.registerProtocolHandler(TERMINATED_PATH_PATTERN, (headers, body) -> {
+                endpoint.registerProtocolHandler(TERMINATE_PATH_PATTERN, (headers, body) -> {
+                    try {
+                        var node = MAPPER.readValue(body, JsonNode.class);
+                        var errors = DpsMessages.DataFlowTerminateMessage.getValidator().validate(node);
+
+                        if (!errors.isEmpty()) {
+                            return new HandlerResponse(400, "Error validating json schema: " + MAPPER.writeValueAsString(errors));
+                        }
+                    } catch (IOException e) {
+                        return new HandlerResponse(400, "Failed to parse DataFlowTerminateMessage: " + e.getMessage());
+                    }
+
                     receivedTerminateMessage.set(true);
                     monitor.debug("Received terminated message from control plane");
-                    endpoint.deregisterHandler(TERMINATED_PATH_PATTERN);
+                    endpoint.deregisterHandler(TERMINATE_PATH_PATTERN);
                     latch.countDown();
                     return new HandlerResponse(200, "{}");
                 }));
@@ -183,7 +220,7 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
             if (id == null) {
                 throw new RuntimeException("Cannot signal completion: no actual process ID received from prepare message");
             }
-            monitor.debug("Send DSP message for actual processId=" + id);
+            monitor.debug("TCK. DSP: request Transfer state for processId=" + id);
             var actualState = dspClient.dspTransferState(id);
             return Objects.equals(actualState, state);
         });
@@ -206,7 +243,7 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
             if (id == null) {
                 throw new RuntimeException("Cannot signal start: no actual process ID received from prepare message");
             }
-            monitor.debug("Send DSP message for actual processId=" + id);
+            monitor.debug("TCK. DSP: send TransferStartMessage for processId=" + id);
             dspClient.sendTransferStartMessage(id);
         });
         return this;
@@ -219,7 +256,7 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
             if (id == null) {
                 throw new RuntimeException("Cannot signal completion: no actual process ID received from prepare message");
             }
-            monitor.debug("Send DSP message for actual processId=" + id);
+            monitor.debug("TCK. DSP: send TransferCompletionMessage for processId=" + id);
             dspClient.sendTransferCompletionMessage(id);
         });
         return this;
@@ -232,7 +269,7 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
             if (id == null) {
                 throw new RuntimeException("Cannot signal termination: no actual process ID received from prepare message");
             }
-            monitor.debug("Send DSP message for actual processId=" + id);
+            monitor.debug("TCK. DSP: send TransferTerminationMessage for processId=" + id);
             dspClient.sendTransferTerminationMessage(id);
         });
         return this;

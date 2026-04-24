@@ -18,7 +18,8 @@ plugins {
 
 dependencies {
     implementation(libs.tck.dsp.core)
-    implementation(libs.jackson.databind)
     implementation(libs.okhttp)
+    implementation(libs.jackson.databind)
+    implementation(libs.json.schema.validator)
     implementation(libs.junit.platform.launcher)
 }

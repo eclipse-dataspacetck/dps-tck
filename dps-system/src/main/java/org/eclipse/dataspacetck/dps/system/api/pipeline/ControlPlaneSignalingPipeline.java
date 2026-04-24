@@ -79,4 +79,5 @@ public interface ControlPlaneSignalingPipeline extends AsyncPipeline<ControlPlan
     ControlPlaneSignalingPipeline sendTransferCompletionMessage(String processId);
 
     ControlPlaneSignalingPipeline sendTransferTerminationMessage(String processId);
+
 }
