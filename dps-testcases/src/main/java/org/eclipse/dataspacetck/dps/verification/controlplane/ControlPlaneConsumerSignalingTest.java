@@ -20,12 +20,10 @@ import org.eclipse.dataspacetck.core.api.system.ConfigParam;
 import org.eclipse.dataspacetck.core.api.system.Inject;
 import org.eclipse.dataspacetck.core.api.verification.AbstractVerificationTest;
 import org.eclipse.dataspacetck.dps.system.api.pipeline.ControlPlaneSignalingPipeline;
-import org.eclipse.dataspacetck.dps.system.pipeline.ControlPlaneSignalingPipelineImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 
 import static java.util.UUID.randomUUID;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("base-compliance")
 @DisplayName("CP_C: Control plane consumer signaling scenarios")
@@ -69,19 +67,6 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
                 .thenWaitForTransferToBeInState("COMPLETED")
                 .thenWaitForCompletedMessage()
                 .execute();
-
-        var received = ((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedPrepareMessage();
-
-        assertThat(received).isNotNull();
-        assertThat(received).containsKey("messageId");
-        assertThat(received).containsKey("participantId");
-        assertThat(received).containsKey("counterPartyId");
-        assertThat(received).containsKey("dataspaceContext");
-        assertThat(received).containsKey("processId");
-        assertThat(received).containsKey("agreementId");
-        assertThat(received).containsKey("datasetId");
-        assertThat(received).containsKey("transferType");
-        assertThat(received).containsKey("claims");
     }
 
     @MandatoryTest
@@ -110,20 +95,6 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
                 .thenWaitForTransferToBeInState("TERMINATED")
                 .thenWaitForTerminateMessage()
                 .execute();
-
-
-        var received = ((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedPrepareMessage();
-
-        assertThat(received).isNotNull();
-        assertThat(received).containsKey("messageId");
-        assertThat(received).containsKey("participantId");
-        assertThat(received).containsKey("counterPartyId");
-        assertThat(received).containsKey("dataspaceContext");
-        assertThat(received).containsKey("processId");
-        assertThat(received).containsKey("agreementId");
-        assertThat(received).containsKey("datasetId");
-        assertThat(received).containsKey("transferType");
-        assertThat(received).containsKey("claims");
     }
 
     @MandatoryTest
@@ -165,22 +136,6 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
                 .thenWaitForTransferToBeInState("COMPLETED")
                 .thenWaitForCompletedMessage()
                 .execute();
-
-        var received = ((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedPrepareMessage();
-
-        assertThat(received).isNotNull();
-        assertThat(received).containsKey("messageId");
-        assertThat(received).containsKey("participantId");
-        assertThat(received).containsKey("counterPartyId");
-        assertThat(received).containsKey("dataspaceContext");
-        assertThat(received).containsKey("processId");
-        assertThat(received).containsKey("agreementId");
-        assertThat(received).containsKey("datasetId");
-        assertThat(received).containsKey("transferType");
-        assertThat(received).containsKey("claims");
-
-        assertThat(((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedSuspendMessage()).isNotNull();
-        assertThat(((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedResumeMessage()).isNotNull();
     }
 
     @MandatoryTest
@@ -216,21 +171,6 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
                 .thenWaitForTransferToBeInState("TERMINATED")
                 .thenWaitForTerminateMessage()
                 .execute();
-
-        var received = ((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedPrepareMessage();
-
-        assertThat(received).isNotNull();
-        assertThat(received).containsKey("messageId");
-        assertThat(received).containsKey("participantId");
-        assertThat(received).containsKey("counterPartyId");
-        assertThat(received).containsKey("dataspaceContext");
-        assertThat(received).containsKey("processId");
-        assertThat(received).containsKey("agreementId");
-        assertThat(received).containsKey("datasetId");
-        assertThat(received).containsKey("transferType");
-        assertThat(received).containsKey("claims");
-
-        assertThat(((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedSuspendMessage()).isNotNull();
     }
 
 }

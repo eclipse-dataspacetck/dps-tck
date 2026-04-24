@@ -20,12 +20,10 @@ import org.eclipse.dataspacetck.core.api.system.ConfigParam;
 import org.eclipse.dataspacetck.core.api.system.Inject;
 import org.eclipse.dataspacetck.core.api.verification.AbstractVerificationTest;
 import org.eclipse.dataspacetck.dps.system.api.pipeline.ControlPlaneSignalingPipeline;
-import org.eclipse.dataspacetck.dps.system.pipeline.ControlPlaneSignalingPipelineImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 
 import static java.util.UUID.randomUUID;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("base-compliance")
 @DisplayName("CP_P: Control plane provider signaling scenarios")
@@ -39,9 +37,6 @@ public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest 
 
     @ConfigParam
     protected String agreementId = randomUUID().toString();
-
-    @ConfigParam
-    protected String datasetId = randomUUID().toString();
 
     @MandatoryTest
     @DisplayName("CP_P:01-01: Verify DataFlowStartMessage is dispatched when a transfer request is received and completed notification is sent to the data plane")
@@ -61,18 +56,6 @@ public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest 
                 .thenWaitForDataFlowStartMessage()
                 .sendTransferCompletionMessage(processId)
                 .execute();
-
-        var received = ((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedStartMessage();
-
-        assertThat(received).isNotNull();
-        assertThat(received).containsKey("messageId");
-        assertThat(received).containsKey("participantId");
-        assertThat(received).containsKey("counterPartyId");
-        assertThat(received).containsKey("dataspaceContext");
-        assertThat(received).containsKey("processId");
-        assertThat(received).containsKey("agreementId");
-        assertThat(received).containsKey("transferType");
-        assertThat(received).containsKey("claims");
     }
 
     @MandatoryTest
@@ -93,18 +76,6 @@ public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest 
                 .thenWaitForDataFlowStartMessage()
                 .sendTransferTerminationMessage(processId)
                 .execute();
-
-        var received = ((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedStartMessage();
-
-        assertThat(received).isNotNull();
-        assertThat(received).containsKey("messageId");
-        assertThat(received).containsKey("participantId");
-        assertThat(received).containsKey("counterPartyId");
-        assertThat(received).containsKey("dataspaceContext");
-        assertThat(received).containsKey("processId");
-        assertThat(received).containsKey("agreementId");
-        assertThat(received).containsKey("transferType");
-        assertThat(received).containsKey("claims");
     }
 
     @MandatoryTest
@@ -137,21 +108,6 @@ public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest 
                 .thenWaitForResumeMessage()
                 .sendTransferCompletionMessage(processId)
                 .execute();
-
-        var received = ((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedStartMessage();
-
-        assertThat(received).isNotNull();
-        assertThat(received).containsKey("messageId");
-        assertThat(received).containsKey("participantId");
-        assertThat(received).containsKey("counterPartyId");
-        assertThat(received).containsKey("dataspaceContext");
-        assertThat(received).containsKey("processId");
-        assertThat(received).containsKey("agreementId");
-        assertThat(received).containsKey("transferType");
-        assertThat(received).containsKey("claims");
-
-        assertThat(((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedSuspendMessage()).isNotNull();
-        assertThat(((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedResumeMessage()).isNotNull();
     }
 
     @MandatoryTest
@@ -178,19 +134,5 @@ public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest 
                 .thenWaitForSuspendMessage()
                 .sendTransferTerminationMessage(processId)
                 .execute();
-
-        var received = ((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedStartMessage();
-
-        assertThat(received).isNotNull();
-        assertThat(received).containsKey("messageId");
-        assertThat(received).containsKey("participantId");
-        assertThat(received).containsKey("counterPartyId");
-        assertThat(received).containsKey("dataspaceContext");
-        assertThat(received).containsKey("processId");
-        assertThat(received).containsKey("agreementId");
-        assertThat(received).containsKey("transferType");
-        assertThat(received).containsKey("claims");
-
-        assertThat(((ControlPlaneSignalingPipelineImpl) signalingPipeline).getReceivedSuspendMessage()).isNotNull();
     }
 }
