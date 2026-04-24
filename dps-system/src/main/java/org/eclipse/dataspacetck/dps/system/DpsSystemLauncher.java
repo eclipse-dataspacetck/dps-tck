@@ -14,6 +14,7 @@
 
 package org.eclipse.dataspacetck.dps.system;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.dataspacetck.core.api.system.CallbackEndpoint;
 import org.eclipse.dataspacetck.core.spi.boot.Monitor;
 import org.eclipse.dataspacetck.core.spi.system.ServiceConfiguration;
@@ -27,6 +28,7 @@ import org.eclipse.dataspacetck.dps.system.client.LocalControlPlaneClient;
 import org.eclipse.dataspacetck.dps.system.client.LocalDspClient;
 import org.eclipse.dataspacetck.dps.system.connector.LocalControlPlaneConnector;
 import org.eclipse.dataspacetck.dps.system.pipeline.ControlPlaneSignalingPipelineImpl;
+import org.jspecify.annotations.NonNull;
 
 import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_PREFIX;
 
@@ -47,6 +49,7 @@ public class DpsSystemLauncher implements SystemLauncher {
     private long waitTime = DEFAULT_WAIT_SECONDS;
     private boolean useLocalConnector;
     private Monitor monitor;
+    private final ObjectMapper mapper = new ObjectMapper();
 
     @Override
     public void start(SystemConfiguration configuration) {
@@ -68,17 +71,23 @@ public class DpsSystemLauncher implements SystemLauncher {
     public <T> T getService(Class<T> type, ServiceConfiguration configuration, ServiceResolver resolver) {
         if (ControlPlaneSignalingPipeline.class.equals(type)) {
             var callbackEndpoint = (CallbackEndpoint) resolver.resolve(CallbackEndpoint.class, configuration);
-            if (useLocalConnector) {
-                var connector = new LocalControlPlaneConnector(monitor);
-                var controlPlaneClient = new LocalControlPlaneClient(connector);
-                var dspClient = new LocalDspClient(connector);
-                return type.cast(new ControlPlaneSignalingPipelineImpl(controlPlaneClient, dspClient, callbackEndpoint, monitor, waitTime));
-            }
-            var controlPlaneClient = new HttpControlPlaneClient(controlPlaneWebhookUrl, monitor);
-            var dspClient = new HttpDspClient(controlPlaneProtocolUrl, monitor);
-            return type.cast(new ControlPlaneSignalingPipelineImpl(controlPlaneClient, dspClient, callbackEndpoint, monitor, waitTime));
+            var pipeline = useLocalConnector ? localPipeline(callbackEndpoint) : httpPipeline(callbackEndpoint);
+            return type.cast(pipeline);
         }
         return null;
+    }
+
+    private @NonNull ControlPlaneSignalingPipelineImpl httpPipeline(CallbackEndpoint callbackEndpoint) {
+        var controlPlaneClient = new HttpControlPlaneClient(controlPlaneWebhookUrl, monitor, mapper);
+        var dspClient = new HttpDspClient(controlPlaneProtocolUrl, monitor, mapper);
+        return new ControlPlaneSignalingPipelineImpl(controlPlaneClient, dspClient, callbackEndpoint, monitor, waitTime, mapper);
+    }
+
+    private @NonNull ControlPlaneSignalingPipelineImpl localPipeline(CallbackEndpoint callbackEndpoint) {
+        var connector = new LocalControlPlaneConnector(monitor);
+        var controlPlaneClient = new LocalControlPlaneClient(connector);
+        var dspClient = new LocalDspClient(connector);
+        return new ControlPlaneSignalingPipelineImpl(controlPlaneClient, dspClient, callbackEndpoint, monitor, waitTime, mapper);
     }
 
     private String getRequiredStringSetting(SystemConfiguration configuration, String key) {

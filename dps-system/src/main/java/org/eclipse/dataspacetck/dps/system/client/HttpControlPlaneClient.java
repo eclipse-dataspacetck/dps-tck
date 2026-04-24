@@ -31,23 +31,24 @@ import java.util.Map;
 public class HttpControlPlaneClient implements ControlPlaneClient {
 
     private static final MediaType JSON = MediaType.get("application/json");
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final String webhookUrl;
     private final Monitor monitor;
     private final OkHttpClient httpClient;
+    private final ObjectMapper mapper;
 
-    public HttpControlPlaneClient(String webhookUrl, Monitor monitor) {
+    public HttpControlPlaneClient(String webhookUrl, Monitor monitor, ObjectMapper mapper) {
         this.webhookUrl = webhookUrl;
         this.monitor = monitor;
         this.httpClient = new OkHttpClient();
+        this.mapper = mapper;
     }
 
     @Override
     public void triggerDataFlowPreparation(String processId, String agreementId, String datasetId, String dataPlaneUrl) {
         try {
             var url = webhookUrl + "/dataflows/trigger";
-            var body = MAPPER.writeValueAsString(Map.of(
+            var body = mapper.writeValueAsString(Map.of(
                     "processId", processId,
                     "agreementId", agreementId,
                     "datasetId", datasetId,

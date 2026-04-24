@@ -56,31 +56,24 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
     private static final String TERMINATE_PATH_PATTERN = "/dataflows/[^/]+/terminate";
     private static final String SUSPEND_PATH_PATTERN = "/dataflows/[^/]+/suspend";
     private static final String RESUME_PATH_PATTERN = "/dataflows/[^/]+/resume";
+
     private static final String DSP_REQUEST_PATH = "/transfers/request";
     private static final String DSP_START_PATH_PATTERN = "/transfers/[^/]+/start";
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ControlPlaneClient controlPlaneClient;
     private final DspClient dspClient;
-    private final AtomicReference<Map<String, Object>> receivedPrepareMessage = new AtomicReference<>();
-    private final AtomicReference<Map<String, Object>> receivedStartMessage = new AtomicReference<>();
-    private final AtomicReference<String> actualProcessId = new AtomicReference<>();
-    private final AtomicReference<Boolean> receivedCompletedNotification = new AtomicReference<>();
-    private final AtomicReference<Boolean> receivedTerminateMessage = new AtomicReference<>();
-    private final AtomicReference<Map<String, Object>> receivedSuspendMessage = new AtomicReference<>();
-    private final AtomicReference<Map<String, Object>> receivedResumeMessage = new AtomicReference<>();
     private final AtomicReference<ReceivedDpsMessage> lastDpsReceivedMessage = new AtomicReference<>();
     private final AtomicReference<Map<String, Object>> lastDspReceivedMessage = new AtomicReference<>();
     private final AtomicReference<String> counterPartyProcessId = new AtomicReference<>();
+    private final ObjectMapper mapper;
 
-    public ControlPlaneSignalingPipelineImpl(ControlPlaneClient controlPlaneClient,
-                                             DspClient dspClient,
-                                             CallbackEndpoint endpoint,
-                                             Monitor monitor,
-                                             long waitTime) {
+    public ControlPlaneSignalingPipelineImpl(ControlPlaneClient controlPlaneClient, DspClient dspClient,
+                                             CallbackEndpoint endpoint, Monitor monitor,
+                                             long waitTime, ObjectMapper mapper) {
         super(endpoint, monitor, waitTime);
         this.controlPlaneClient = controlPlaneClient;
         this.dspClient = dspClient;
+        this.mapper = mapper;
 
 
         registerDspTransferRequestHandler();
@@ -132,41 +125,14 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
         return this;
     }
 
-    private void registerMessageHandler(String path, DpsMessage dspMessage, Map<String, String> responseBody) {
-        var latch = new CountDownLatch(1);
-        expectLatches.add(latch);
-        stages.add(() ->
-                endpoint.registerProtocolHandler(path, (headers, body) -> {
-                    Map<String, Object> message = null;
-                    if (dspMessage != null) {
-                        var result = deserializeDps(body, dspMessage);
-                        message = result.content();
-                        if (message == null) {
-                            return badRequest(result.validationErrors());
-                        }
-
-                        if (dspMessage == DataFlowPrepareMessage || dspMessage == DataFlowStartMessage) {
-                            actualProcessId.set((String) message.get("processId"));
-                        }
-                    }
-
-                    lastDpsReceivedMessage.set(new ReceivedDpsMessage(path, dspMessage, message));
-                    monitor.debug("Received call to %s endpoint from control plane, processId=%s".formatted(path, actualProcessId.get()));
-                    endpoint.deregisterHandler(path);
-                    latch.countDown();
-
-                    return success(responseBody);
-                }));
-    }
-
     @Override
     public ControlPlaneSignalingPipeline thenWaitForPrepareMessage() {
-        return thenWait("DataFlowPrepareMessage to be received", lastDpsCallOn(PREPARE_PATH));
+        return thenWait("DataFlowPrepareMessage to be received by TCK data plane", lastDpsCallOn(PREPARE_PATH));
     }
 
     @Override
     public ControlPlaneSignalingPipeline thenWaitForDataFlowStartMessage() {
-        return thenWait("DataFlowStartMessage to be received", lastDpsCallOn(START_PATH));
+        return thenWait("DataFlowStartMessage to be received by TCK data plane", lastDpsCallOn(START_PATH));
     }
 
     @Override
@@ -176,7 +142,7 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
 
     @Override
     public ControlPlaneSignalingPipeline thenWaitForTerminateMessage() {
-        return thenWait("terminate message to be received by TCK data plane", lastDpsCallOn(TERMINATE_PATH_PATTERN));
+        return thenWait("DataFlowTerminateMessage to be received by TCK data plane", lastDpsCallOn(TERMINATE_PATH_PATTERN));
     }
 
     @Override
@@ -286,15 +252,38 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
         return this;
     }
 
+    private void registerMessageHandler(String path, DpsMessage dspMessage, Map<String, String> responseBody) {
+        var latch = new CountDownLatch(1);
+        expectLatches.add(latch);
+        stages.add(() ->
+                endpoint.registerProtocolHandler(path, (headers, body) -> {
+                    Map<String, Object> message = null;
+                    if (dspMessage != null) {
+                        var result = deserializeDps(body, dspMessage);
+                        message = result.content();
+                        if (message == null) {
+                            return badRequest(result.validationErrors());
+                        }
+                    }
+
+                    lastDpsReceivedMessage.set(new ReceivedDpsMessage(path, dspMessage, message));
+                    monitor.debug("Received call to %s endpoint from control plane. Content: %s".formatted(path, message));
+                    endpoint.deregisterHandler(path);
+                    latch.countDown();
+
+                    return success(responseBody);
+                }));
+    }
+
     private void registerDspTransferRequestHandler() {
         endpoint.registerProtocolHandler(DSP_REQUEST_PATH, (headers, body) -> {
             try {
-                var message = MAPPER.readValue(body, Map.class);
+                var message = mapper.readValue(body, Map.class);
                 lastDspReceivedMessage.set(message);
                 counterPartyProcessId.set((String) message.get("consumerPid"));
                 monitor.debug("Received TransferRequestMessage from control plane, processId=" + counterPartyProcessId.get());
                 endpoint.deregisterHandler(DSP_REQUEST_PATH);
-                return new HandlerResponse(200, MAPPER.writeValueAsString(Map.of(
+                return new HandlerResponse(200, mapper.writeValueAsString(Map.of(
                         "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
                         "@type", "TransferProcess",
                         "providerPid", UUID.randomUUID().toString(),
@@ -309,12 +298,12 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
     private void registerDspTransferStartHandler() {
         endpoint.registerProtocolHandler(DSP_START_PATH_PATTERN, (headers, body) -> {
             try {
-                var message = MAPPER.readValue(body, Map.class);
+                var message = mapper.readValue(body, Map.class);
                 lastDspReceivedMessage.set(message);
                 counterPartyProcessId.set((String) message.get("providerPid"));
                 monitor.debug("Received TransferStartMessage from control plane, processId=" + counterPartyProcessId.get());
                 endpoint.deregisterHandler(DSP_START_PATH_PATTERN);
-                return new HandlerResponse(200, MAPPER.writeValueAsString(Map.of(
+                return new HandlerResponse(200, mapper.writeValueAsString(Map.of(
                         "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
                         "@type", "TransferProcess",
                         "providerPid", counterPartyProcessId.get(),
@@ -328,13 +317,13 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
 
     private DpsDeserializationResult deserializeDps(InputStream body, DpsMessage message) {
         try {
-            var node = MAPPER.readValue(body, JsonNode.class);
+            var node = mapper.readValue(body, JsonNode.class);
             var errors = message.getValidator().validate(node);
 
             if (!errors.isEmpty()) {
                 return new DpsDeserializationResult(null, errors);
             }
-            return new DpsDeserializationResult(MAPPER.convertValue(node, Map.class), null);
+            return new DpsDeserializationResult(mapper.convertValue(node, Map.class), null);
         } catch (IOException e) {
             var error = Error.builder().message("Failed to parse %s: %s".formatted(message.name(), e.getMessage())).build();
             return new DpsDeserializationResult(null, List.of(error));
@@ -343,7 +332,7 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
 
     private HandlerResponse success(Map<String, String> responseBody) {
         try {
-            return new HandlerResponse(200, MAPPER.writeValueAsString(responseBody));
+            return new HandlerResponse(200, mapper.writeValueAsString(responseBody));
         } catch (JsonProcessingException e) {
             return new HandlerResponse(500, "Unexpected exception: " + e.getMessage());
         }
@@ -351,7 +340,7 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
 
     private HandlerResponse badRequest(List<Error> validationErrors) {
         try {
-            return new HandlerResponse(400, "Error evaluating body: " + MAPPER.writeValueAsString(validationErrors));
+            return new HandlerResponse(400, "Error evaluating body: " + mapper.writeValueAsString(validationErrors));
         } catch (JsonProcessingException e) {
             return new HandlerResponse(500, "Unexpected exception: " + e.getMessage());
         }

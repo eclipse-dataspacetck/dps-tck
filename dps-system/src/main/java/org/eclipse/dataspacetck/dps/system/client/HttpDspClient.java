@@ -34,11 +34,12 @@ public class HttpDspClient implements DspClient {
     private final String protocolUrl;
     private final Monitor monitor;
     private final OkHttpClient httpClient;
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private final ObjectMapper mapper;
 
-    public HttpDspClient(String protocolUrl, Monitor monitor) {
+    public HttpDspClient(String protocolUrl, Monitor monitor, ObjectMapper mapper) {
         this.protocolUrl = protocolUrl;
         this.monitor = monitor;
+        this.mapper = mapper;
         this.httpClient = new OkHttpClient();
     }
 
@@ -49,7 +50,7 @@ public class HttpDspClient implements DspClient {
 
             var request = new Request.Builder()
                     .url(url)
-                    .addHeader("Authorization", MAPPER.writeValueAsString(Map.of(
+                    .addHeader("Authorization", mapper.writeValueAsString(Map.of(
                             "clientId", "providerId"
                     )))
                     .get()
@@ -112,10 +113,10 @@ public class HttpDspClient implements DspClient {
 
             var request = new Request.Builder()
                     .url(url)
-                    .addHeader("Authorization", MAPPER.writeValueAsString(Map.of(
+                    .addHeader("Authorization", mapper.writeValueAsString(Map.of(
                             "clientId", senderId
                     )))
-                    .post(RequestBody.create(MAPPER.writeValueAsString(requestBody), JSON))
+                    .post(RequestBody.create(mapper.writeValueAsString(requestBody), JSON))
                     .build();
 
             return execute(request);
@@ -135,7 +136,7 @@ public class HttpDspClient implements DspClient {
             if (body.isBlank()) {
                 return Collections.emptyMap();
             }
-            return MAPPER.readValue(body, Map.class);
+            return mapper.readValue(body, Map.class);
         }
     }
 
