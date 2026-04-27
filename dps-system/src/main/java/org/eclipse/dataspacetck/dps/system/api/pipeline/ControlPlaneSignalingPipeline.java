@@ -107,6 +107,4 @@ public interface ControlPlaneSignalingPipeline extends AsyncPipeline<ControlPlan
 
     ControlPlaneSignalingPipeline sendTransferSuspensionMessage(String processId);
 
-    ControlPlaneSignalingPipeline sendTransferResumptionMessage(String processId);
-
 }

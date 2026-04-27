@@ -59,8 +59,4 @@ public class LocalDspClient implements DspClient {
         connector.receiveTransferSuspension(processId);
     }
 
-    @Override
-    public void sendTransferResumptionMessage(String processId) {
-        connector.receiveTransferResumption(processId);
-    }
 }

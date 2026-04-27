@@ -28,5 +28,4 @@ public interface DspClient {
 
     void sendTransferSuspensionMessage(String processId);
 
-    void sendTransferResumptionMessage(String processId);
 }

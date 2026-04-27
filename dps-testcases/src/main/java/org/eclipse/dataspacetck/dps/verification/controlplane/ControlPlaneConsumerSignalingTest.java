@@ -143,7 +143,7 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
             TCK->>CUT: DSP TransferSuspensionMessage
             CUT->>TCK: DataFlowSuspendMessage (POST /dataflows/{processId}/suspend)
             TCK-->>CUT: 200 OK
-            TCK->>CUT: DSP TransferResumptionMessage
+            TCK->>CUT: DSP TransferStartMessage
             CUT->>TCK: DataFlowResumeMessage (POST /dataflows/{processId}/resume)
             TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferCompletionMessage
@@ -162,7 +162,7 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
                 .sendTransferSuspensionMessage(processId)
                 .thenWaitForSuspendMessage()
                 .expectDataFlowResumeMessage(processId)
-                .sendTransferResumptionMessage(processId)
+                .sendTransferStartMessage(processId)
                 .thenWaitForResumeMessage()
                 .expectDataFlowCompletedMessage(processId)
                 .sendTransferCompletionMessage(processId)

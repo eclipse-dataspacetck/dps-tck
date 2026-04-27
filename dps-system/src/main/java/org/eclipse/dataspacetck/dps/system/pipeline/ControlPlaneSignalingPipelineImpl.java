@@ -239,19 +239,6 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
         return this;
     }
 
-    @Override
-    public ControlPlaneSignalingPipeline sendTransferResumptionMessage(String processId) {
-        stages.add(() -> {
-            var id = counterPartyProcessId.get();
-            if (id == null) {
-                throw new RuntimeException("Cannot signal resumption: no actual process ID received");
-            }
-            monitor.debug("TCK. DSP: send TransferResumptionMessage for processId=" + id);
-            dspClient.sendTransferResumptionMessage(id);
-        });
-        return this;
-    }
-
     private void registerMessageHandler(String path, DpsMessage dspMessage, Map<String, String> responseBody) {
         var latch = new CountDownLatch(1);
         expectLatches.add(latch);

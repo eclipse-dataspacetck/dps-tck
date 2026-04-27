@@ -67,8 +67,23 @@ public class LocalControlPlaneConnector {
     }
 
     public void receiveTransferStart(String processId) {
-        monitor.debug("Local CUT: transfer started for processId=" + processId);
-        transferStates.put(processId, "STARTED");
+        var currentState = transferStates.get(processId);
+        if (currentState != null && currentState.equals("SUSPENDED")) {
+            monitor.debug("Local CUT: transfer resumed for processId=" + processId);
+            transferStates.put(processId, "RESUMED");
+            var baseUrl = dataPlaneBaseUrl.get();
+            if (baseUrl != null) {
+                try {
+                    var body = MAPPER.writeValueAsString(Map.of("messageId", UUID.randomUUID().toString(), "processId", processId));
+                    sendAsync(baseUrl + "/dataflows/" + processId + "/resume", body, "resume notification");
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to build DataFlowResumeMessage", e);
+                }
+            }
+        } else {
+            monitor.debug("Local CUT: transfer started for processId=" + processId);
+            transferStates.put(processId, "STARTED");
+        }
     }
 
     public void receiveTransferCompletion(String processId) {
@@ -99,20 +114,6 @@ public class LocalControlPlaneConnector {
                 sendAsync(baseUrl + "/dataflows/" + processId + "/suspend", body, "suspend notification");
             } catch (IOException e) {
                 throw new RuntimeException("Failed to build DataFlowSuspendMessage", e);
-            }
-        }
-    }
-
-    public void receiveTransferResumption(String processId) {
-        monitor.debug("Local CUT: transfer resumed for processId=" + processId);
-        transferStates.put(processId, "STARTED");
-        var baseUrl = dataPlaneBaseUrl.get();
-        if (baseUrl != null) {
-            try {
-                var body = MAPPER.writeValueAsString(Map.of("messageId", UUID.randomUUID().toString(), "processId", processId));
-                sendAsync(baseUrl + "/dataflows/" + processId + "/resume", body, "resume notification");
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to build DataFlowResumeMessage", e);
             }
         }
     }

@@ -88,12 +88,6 @@ public class HttpDspClient implements DspClient {
     }
 
     @Override
-    public void sendTransferResumptionMessage(String processId) {
-        var requestBody = message(processId, "TransferResumptionMessage");
-        send(protocolUrl + "/transfers/" + processId + "/resumption", requestBody, "providerId");
-    }
-
-    @Override
     public String sendTransferRequestMessage(String address, String agreementId, String transferType) {
         var requestBody = Map.of(
                 "@context", "https://w3id.org/dspace/2025/1/context.jsonld",

@@ -35,7 +35,6 @@ import static java.util.UUID.randomUUID;
  * <ul>
  *   <li>{@code POST /dataflows/start} — DataFlowStartMessage dispatch after DSP TransferRequestMessage</li>
  *   <li>{@code POST /dataflows/{id}/suspend} — DataFlowSuspendMessage dispatch after DSP TransferSuspensionMessage</li>
- *   <li>{@code POST /dataflows/{id}/resume} — DataFlowResumeMessage dispatch after DSP TransferResumptionMessage</li>
  *   <li>{@code POST /dataflows/{id}/completed} — completed notification dispatch after DSP TransferCompletionMessage</li>
  *   <li>{@code POST /dataflows/{id}/terminate} — terminate notification dispatch after DSP TransferTerminationMessage</li>
  * </ul>
@@ -117,7 +116,7 @@ public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest 
             TCK->>CUT: DSP TransferSuspensionMessage (POST /transfers/{id}/suspension)
             CUT->>TCK: DataFlowSuspendMessage (POST /dataflows/{processId}/suspend)
             TCK-->>CUT: 200 OK
-            TCK->>CUT: DSP TransferResumptionMessage (POST /transfers/{id}/resumption)
+            TCK->>CUT: DSP TransferStartMessage (POST /transfers/{id}/start)
             CUT->>TCK: DataFlowResumeMessage (POST /dataflows/{processId}/resume)
             TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferCompletionMessage (POST /transfers/{id}/completion)
@@ -132,7 +131,7 @@ public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest 
                 .sendTransferSuspensionMessage(processId)
                 .thenWaitForSuspendMessage()
                 .expectDataFlowResumeMessage(processId)
-                .sendTransferResumptionMessage(processId)
+                .sendTransferStartMessage(processId)
                 .thenWaitForResumeMessage()
                 .expectDataFlowCompletedMessage(processId)
                 .sendTransferCompletionMessage(processId)
