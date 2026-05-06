@@ -83,6 +83,10 @@ public class LocalControlPlaneConnector {
         } else {
             monitor.debug("Local CUT: transfer started for processId=" + processId);
             transferStates.put(processId, "STARTED");
+            var baseUrl = dataPlaneBaseUrl.get();
+            if (baseUrl != null) {
+                sendAsync(baseUrl + "/dataflows/" + processId + "/started", "{}", "DataFlowStartedNotificationMessage");
+            }
         }
     }
 
