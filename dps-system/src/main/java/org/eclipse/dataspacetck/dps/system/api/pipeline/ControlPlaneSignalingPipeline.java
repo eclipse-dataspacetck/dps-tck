@@ -44,6 +44,8 @@ public interface ControlPlaneSignalingPipeline extends AsyncPipeline<ControlPlan
 
     ControlPlaneSignalingPipeline expectDataFlowStartMessage();
 
+    ControlPlaneSignalingPipeline expectDataFlowStartedNotificationMessage();
+
     /**
      * Registers a handler on the TCK data plane endpoint for the terminate message
      * ({@code POST /dataflows/{processId}/terminate}) that the control plane sends when
@@ -91,6 +93,8 @@ public interface ControlPlaneSignalingPipeline extends AsyncPipeline<ControlPlan
 
     ControlPlaneSignalingPipeline sendTransferStartMessage(String processId);
 
+    ControlPlaneSignalingPipeline thenWaitForStartedNotificationMessage();
+
     ControlPlaneSignalingPipeline sendTransferCompletionMessage(String processId);
 
     ControlPlaneSignalingPipeline sendTransferTerminationMessage(String processId);
@@ -106,5 +110,4 @@ public interface ControlPlaneSignalingPipeline extends AsyncPipeline<ControlPlan
     ControlPlaneSignalingPipeline thenWaitForResumeMessage();
 
     ControlPlaneSignalingPipeline sendTransferSuspensionMessage(String processId);
-
 }

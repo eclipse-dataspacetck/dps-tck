@@ -21,6 +21,7 @@ import com.networknt.schema.SchemaRegistry;
 public enum DpsMessage {
     DataFlowPrepareMessage,
     DataFlowStartMessage,
+    DataFlowStartedNotificationMessage,
     DataFlowTerminateMessage,
     DataFlowSuspendMessage,
     DataFlowResumeMessage;
@@ -32,7 +33,9 @@ public enum DpsMessage {
     DpsMessage() {
         validator = SchemaRegistry.builder()
                 .schemaIdResolvers(schemaIdResolvers -> schemaIdResolvers
-                        .mapPrefix(DSPACE_SIG_NAMESPACE + "/", "classpath:schema/"))
+                        .mapPrefix(DSPACE_SIG_NAMESPACE + "/", "classpath:schema/")
+                        .mapPrefix("https://w3id.org/dspace/2025/1/transfer/", "classpath:schema/dsp/")
+                )
                 .build().getSchema(SchemaLocation.of(DSPACE_SIG_NAMESPACE + "/" + name() + ".schema.json"));
     }
 

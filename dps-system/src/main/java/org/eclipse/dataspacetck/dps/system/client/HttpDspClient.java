@@ -48,15 +48,13 @@ public class HttpDspClient implements DspClient {
         try {
             var url = protocolUrl + "/transfers/" + processId;
 
+            var authentication = Map.of("clientId", "providerId");
             var request = new Request.Builder()
                     .url(url)
-                    .addHeader("Authorization", mapper.writeValueAsString(Map.of(
-                            "clientId", "providerId"
-                    )))
+                    .addHeader("Authorization", mapper.writeValueAsString(authentication))
                     .get()
                     .build();
 
-            monitor.debug("DSP GET TransferProcess " + url);
             return execute(request).get("state").toString();
         } catch (IOException e) {
             throw new RuntimeException("Failed to signal data flow completion", e);

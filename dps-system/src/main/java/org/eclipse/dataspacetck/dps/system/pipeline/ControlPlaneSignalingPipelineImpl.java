@@ -41,6 +41,7 @@ import static java.util.Collections.emptyMap;
 import static org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessage.DataFlowPrepareMessage;
 import static org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessage.DataFlowResumeMessage;
 import static org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessage.DataFlowStartMessage;
+import static org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessage.DataFlowStartedNotificationMessage;
 import static org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessage.DataFlowSuspendMessage;
 import static org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessage.DataFlowTerminateMessage;
 
@@ -52,6 +53,7 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
 
     private static final String PREPARE_PATH = "/dataflows/prepare";
     private static final String START_PATH = "/dataflows/start";
+    private static final String STARTED_PATH_PATTERN = "/dataflows/[^/]+/started";
     private static final String COMPLETED_PATH_PATTERN = "/dataflows/[^/]+/completed";
     private static final String TERMINATE_PATH_PATTERN = "/dataflows/[^/]+/terminate";
     private static final String SUSPEND_PATH_PATTERN = "/dataflows/[^/]+/suspend";
@@ -102,6 +104,12 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
     }
 
     @Override
+    public ControlPlaneSignalingPipeline expectDataFlowStartedNotificationMessage() {
+        registerMessageHandler(STARTED_PATH_PATTERN, DataFlowStartedNotificationMessage, emptyMap());
+        return this;
+    }
+
+    @Override
     public ControlPlaneSignalingPipeline expectDataFlowCompletedMessage(String processId) {
         registerMessageHandler(COMPLETED_PATH_PATTERN, null, emptyMap());
         return this;
@@ -121,7 +129,7 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
 
     @Override
     public ControlPlaneSignalingPipeline expectDataFlowResumeMessage(String processId) {
-        registerMessageHandler(RESUME_PATH_PATTERN, DataFlowResumeMessage, emptyMap());
+        registerMessageHandler(RESUME_PATH_PATTERN, DataFlowResumeMessage, Map.of("state", "STARTED"));
         return this;
     }
 
@@ -155,6 +163,11 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
         return thenWait("DataFlowResumeMessage to be received by TCK data plane", lastDpsCallOn(RESUME_PATH_PATTERN));
     }
 
+    @Override
+    public ControlPlaneSignalingPipeline thenWaitForStartedNotificationMessage() {
+        return thenWait("DataFlowStartedNotificationMessage to be received by TCK data plane", lastDpsCallOn(STARTED_PATH_PATTERN));
+    }
+
     private Callable<Boolean> lastDpsCallOn(String path) {
         return () -> lastDpsReceivedMessage.get() != null && lastDpsReceivedMessage.get().path().equals(path);
     }
@@ -171,8 +184,8 @@ public class ControlPlaneSignalingPipelineImpl extends AbstractAsyncPipeline<Con
             if (id == null) {
                 throw new RuntimeException("Cannot signal completion: no actual process ID received from prepare message");
             }
-            monitor.debug("TCK. DSP: request Transfer state for processId=" + id);
             var actualState = dspClient.dspTransferState(id);
+            monitor.debug("TCK. DSP: expecting processId %s state to be %s. Actual state: %s".formatted(id, state, actualState));
             return Objects.equals(actualState, state);
         });
     }
