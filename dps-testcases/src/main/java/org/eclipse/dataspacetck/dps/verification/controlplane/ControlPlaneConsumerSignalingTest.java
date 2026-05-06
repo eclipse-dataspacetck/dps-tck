@@ -38,12 +38,11 @@ import static java.util.UUID.randomUUID;
  *   <li>{@code POST /dataflows/{id}/resume} — DataFlowResumeMessage dispatch</li>
  *   <li>{@code POST /dataflows/{id}/completed} — completed notification dispatch</li>
  *   <li>{@code POST /dataflows/{id}/terminate} — terminate notification dispatch</li>
+ *   <li>{@code POST /dataflows/{id}/started} — DataFlowStartedNotificationMessage dispatch</li>
  * </ul>
  *
  * <p>Interactions <strong>not yet covered</strong> (require pipeline extension): TODO!
  * <ul>
- *   <li>{@code POST /dataflows/{id}/started} — DataFlowStartedNotificationMessage that the consumer CP
- *       must send to the consumer DP after receiving a DSP TransferStartMessage</li>
  *   <li>Asynchronous prepare/start transitions (HTTP 202 + {@code /dataflow/prepared} callback)</li>
  * </ul>
  */
@@ -71,11 +70,12 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
 
             TCK->>CUT: Trigger data flow preparation (internal signal)
             CUT->>TCK: DataFlowPrepareMessage (POST /dataflows/prepare)
-            TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=PREPARING)
+            TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=PREPARED)
             CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
             TCK-->>CUT: 200 OK + providerPid
             TCK->>CUT: DSP TransferStartMessage
-            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started) [not yet verified]
+            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started)
+            TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferCompletionMessage
             CUT->>TCK: Completed notification (POST /dataflows/{processId}/completed)
             """)
@@ -105,11 +105,12 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
 
             TCK->>CUT: Trigger data flow preparation (internal signal)
             CUT->>TCK: DataFlowPrepareMessage (POST /dataflows/prepare)
-            TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=PREPARING)
+            TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=PREPARED)
             CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
             TCK-->>CUT: 200 OK + providerPid
             TCK->>CUT: DSP TransferStartMessage
-            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started) [not yet verified]
+            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started)
+            TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferTerminationMessage
             CUT->>TCK: Terminate notification (POST /dataflows/{processId}/terminate)
             """)
@@ -139,17 +140,18 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
 
             TCK->>CUT: Trigger data flow preparation (internal signal)
             CUT->>TCK: DataFlowPrepareMessage (POST /dataflows/prepare)
-            TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=PREPARING)
+            TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=PREPARED)
             CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
             TCK-->>CUT: 200 OK + providerPid
             TCK->>CUT: DSP TransferStartMessage
-            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started) [not yet verified]
+            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started)
+            TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferSuspensionMessage
             CUT->>TCK: DataFlowSuspendMessage (POST /dataflows/{processId}/suspend)
             TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferStartMessage
             CUT->>TCK: DataFlowResumeMessage (POST /dataflows/{processId}/resume)
-            TCK-->>CUT: 200 OK
+            TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=STARTED)
             TCK->>CUT: DSP TransferCompletionMessage
             CUT->>TCK: Completed notification (POST /dataflows/{processId}/completed)
             """)
@@ -185,11 +187,12 @@ public class ControlPlaneConsumerSignalingTest extends AbstractVerificationTest 
 
             TCK->>CUT: Trigger data flow preparation (internal signal)
             CUT->>TCK: DataFlowPrepareMessage (POST /dataflows/prepare)
-            TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=PREPARING)
+            TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=PREPARED)
             CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
             TCK-->>CUT: 200 OK + providerPid
             TCK->>CUT: DSP TransferStartMessage
-            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started) [not yet verified]
+            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started)
+            TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferSuspensionMessage
             CUT->>TCK: DataFlowSuspendMessage (POST /dataflows/{processId}/suspend)
             TCK-->>CUT: 200 OK

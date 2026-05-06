@@ -118,7 +118,7 @@ public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest 
             TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferStartMessage (POST /transfers/{id}/start)
             CUT->>TCK: DataFlowResumeMessage (POST /dataflows/{processId}/resume)
-            TCK-->>CUT: 200 OK
+            TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=STARTED)
             TCK->>CUT: DSP TransferCompletionMessage (POST /transfers/{id}/completion)
             CUT->>TCK: Completed notification (POST /dataflows/{processId}/completed)
             """)
