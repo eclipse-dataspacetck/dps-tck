@@ -17,14 +17,18 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":dps-system"))
-    implementation(libs.tck.dsp.core)
-    implementation(libs.tck.dsp.tck.runtime)
+    api(libs.tck.common.api)
+    api(libs.tck.dsp.core)
+    api(libs.tck.dsp.tck.runtime)
+
+    implementation(libs.assertj)
+    implementation(libs.awaitility)
+    implementation(libs.okhttp)
+    implementation(libs.jackson.databind)
+    implementation(libs.json.schema.validator)
+    implementation(libs.junit.jupiter.api)
     implementation(libs.junit.platform.launcher)
 
-    testImplementation(project(":dps-testcases"))
-    testImplementation(libs.assertj)
-    testImplementation(libs.junit.jupiter.api)
     testRuntimeOnly(libs.junit.platform.engine)
 }
 
