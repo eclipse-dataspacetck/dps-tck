@@ -1,0 +1,33 @@
+#
+#  Copyright (c) 2026 Think-it GmbH
+#
+#  This program and the accompanying materials are made available under the
+#  terms of the Apache License, Version 2.0 which is available at
+#    https://www.apache.org/licenses/LICENSE-2.0
+#
+#  SPDX-License-Identifier: Apache-2.0
+#
+#  Contributors:
+#    Think-it GmbH - initial API and implementation
+#
+
+---
+name: "Publish Snapshot Build"
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  Publish-Snapshot:
+    # This workflow will abort if the required secrets don't exist
+    uses: eclipse-dataspacetck/tck-common/.github/workflows/publish-snapshot.yml@main
+    secrets: inherit
+
+  Publish-Dependencies:
+    uses: eclipse-dataspacetck/tck-common/.github/workflows/publish-dependencies.yml@main
+    permissions:
+      contents: write
+    secrets: inherit
