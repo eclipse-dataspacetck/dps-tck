@@ -19,7 +19,7 @@ import org.eclipse.dataspacetck.api.system.TestSequenceDiagram;
 import org.eclipse.dataspacetck.core.api.system.ConfigParam;
 import org.eclipse.dataspacetck.core.api.system.Inject;
 import org.eclipse.dataspacetck.core.api.verification.AbstractVerificationTest;
-import org.eclipse.dataspacetck.dps.system.api.pipeline.ControlPlaneSignalingPipeline;
+import org.eclipse.dataspacetck.dps.system.pipeline.ControlPlaneSignalingPipeline;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 

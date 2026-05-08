@@ -12,9 +12,9 @@
  *
  */
 
-package org.eclipse.dataspacetck.dps.system.client;
+package org.eclipse.dataspacetck.dps.system.client.local;
 
-import org.eclipse.dataspacetck.dps.system.api.client.ControlPlaneClient;
+import org.eclipse.dataspacetck.dps.system.client.ControlPlaneClient;
 import org.eclipse.dataspacetck.dps.system.connector.LocalControlPlaneConnector;
 
 /**

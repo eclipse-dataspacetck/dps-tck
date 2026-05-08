@@ -12,7 +12,7 @@
  *
  */
 
-package org.eclipse.dataspacetck.dps.system.api.client;
+package org.eclipse.dataspacetck.dps.system.client;
 
 /**
  * Client for signaling the control plane under test to trigger data flow operations.

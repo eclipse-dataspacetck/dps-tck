@@ -22,10 +22,8 @@ import org.eclipse.dataspacetck.core.api.pipeline.AbstractAsyncPipeline;
 import org.eclipse.dataspacetck.core.api.system.CallbackEndpoint;
 import org.eclipse.dataspacetck.core.api.system.HandlerResponse;
 import org.eclipse.dataspacetck.core.spi.boot.Monitor;
-import org.eclipse.dataspacetck.dps.system.api.client.ControlPlaneClient;
-import org.eclipse.dataspacetck.dps.system.api.client.DspClient;
-import org.eclipse.dataspacetck.dps.system.api.pipeline.ControlPlaneSignalingPipeline;
-import org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessage;
+import org.eclipse.dataspacetck.dps.system.client.ControlPlaneClient;
+import org.eclipse.dataspacetck.dps.system.client.DspClient;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,12 +36,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Collections.emptyMap;
-import static org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessage.DataFlowPrepareMessage;
-import static org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessage.DataFlowResumeMessage;
-import static org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessage.DataFlowStartMessage;
-import static org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessage.DataFlowStartedNotificationMessage;
-import static org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessage.DataFlowSuspendMessage;
-import static org.eclipse.dataspacetck.dps.system.api.pipeline.DpsMessage.DataFlowTerminateMessage;
+import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowPrepareMessage;
+import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowResumeMessage;
+import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowStartMessage;
+import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowStartedNotificationMessage;
+import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowSuspendMessage;
+import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowTerminateMessage;
 
 /**
  * Pipeline that verifies the control plane under test dispatches a {@code DataFlowPrepareMessage}

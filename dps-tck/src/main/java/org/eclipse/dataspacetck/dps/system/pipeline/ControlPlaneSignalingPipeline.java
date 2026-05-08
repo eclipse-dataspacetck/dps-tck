@@ -12,7 +12,7 @@
  *
  */
 
-package org.eclipse.dataspacetck.dps.system.api.pipeline;
+package org.eclipse.dataspacetck.dps.system.pipeline;
 
 import org.eclipse.dataspacetck.core.api.pipeline.AsyncPipeline;
 
