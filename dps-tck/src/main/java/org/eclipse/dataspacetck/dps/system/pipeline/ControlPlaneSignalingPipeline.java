@@ -14,100 +14,315 @@
 
 package org.eclipse.dataspacetck.dps.system.pipeline;
 
-import org.eclipse.dataspacetck.core.api.pipeline.AsyncPipeline;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.networknt.schema.Error;
+import org.eclipse.dataspacetck.core.api.pipeline.AbstractAsyncPipeline;
+import org.eclipse.dataspacetck.core.api.system.CallbackEndpoint;
+import org.eclipse.dataspacetck.core.api.system.HandlerResponse;
+import org.eclipse.dataspacetck.core.spi.boot.Monitor;
+import org.eclipse.dataspacetck.dps.system.client.ControlPlaneClient;
+import org.eclipse.dataspacetck.dps.system.client.DspClient;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static java.util.Collections.emptyMap;
+import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowPrepareMessage;
+import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowResumeMessage;
+import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowStartMessage;
+import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowStartedNotificationMessage;
+import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowSuspendMessage;
+import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowTerminateMessage;
 
 /**
  * Pipeline for verifying the control plane consumer signaling behavior.
  * The TCK acts as the data plane and verifies that the control plane under test
  * correctly dispatches a {@code DataFlowPrepareMessage} when triggered.
  */
-public interface ControlPlaneSignalingPipeline extends AsyncPipeline<ControlPlaneSignalingPipeline> {
+public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<ControlPlaneSignalingPipeline> {
 
-    /**
-     * Signals the control plane under test to initiate a data flow preparation.
-     */
-    ControlPlaneSignalingPipeline triggerDataFlowPreparation(String processId, String agreementId, String datasetId);
+    private static final String PREPARE_PATH = "/dataflows/prepare";
+    private static final String START_PATH = "/dataflows/start";
+    private static final String STARTED_PATH_PATTERN = "/dataflows/[^/]+/started";
+    private static final String COMPLETED_PATH_PATTERN = "/dataflows/[^/]+/completed";
+    private static final String TERMINATE_PATH_PATTERN = "/dataflows/[^/]+/terminate";
+    private static final String SUSPEND_PATH_PATTERN = "/dataflows/[^/]+/suspend";
+    private static final String RESUME_PATH_PATTERN = "/dataflows/[^/]+/resume";
 
-    /**
-     * Registers a handler on the TCK data plane endpoint and waits for the
-     * {@code DataFlowPrepareMessage} to arrive. Validates the message and responds 200.
-     * The received message is stored for subsequent verification.
-     */
-    ControlPlaneSignalingPipeline expectDataFlowPrepareMessage();
+    private static final String DSP_REQUEST_PATH = "/transfers/request";
+    private static final String DSP_START_PATH_PATTERN = "/transfers/[^/]+/start";
 
-    /**
-     * Registers a handler on the TCK data plane endpoint for the completed notification
-     * ({@code POST /dataflows/{processId}/completed}) that the control plane sends when
-     * the transfer process completes.
-     */
-    ControlPlaneSignalingPipeline expectDataFlowCompletedMessage(String processId);
+    private final ControlPlaneClient controlPlaneClient;
+    private final DspClient dspClient;
+    private final AtomicReference<ReceivedDpsMessage> lastDpsReceivedMessage = new AtomicReference<>();
+    private final AtomicReference<Map<String, Object>> lastDspReceivedMessage = new AtomicReference<>();
+    private final AtomicReference<String> counterPartyProcessId = new AtomicReference<>();
+    private final ObjectMapper mapper;
 
-    ControlPlaneSignalingPipeline expectDataFlowStartMessage();
+    public ControlPlaneSignalingPipeline(ControlPlaneClient controlPlaneClient, DspClient dspClient,
+                                         CallbackEndpoint endpoint, Monitor monitor,
+                                         long waitTime, ObjectMapper mapper) {
+        super(endpoint, monitor, waitTime);
+        this.controlPlaneClient = controlPlaneClient;
+        this.dspClient = dspClient;
+        this.mapper = mapper;
 
-    ControlPlaneSignalingPipeline expectDataFlowStartedNotificationMessage();
+        registerDspTransferRequestHandler();
+        registerDspTransferStartHandler();
+    }
 
-    /**
-     * Registers a handler on the TCK data plane endpoint for the terminate message
-     * ({@code POST /dataflows/{processId}/terminate}) that the control plane sends when
-     * the transfer process completes.
-     */
-    ControlPlaneSignalingPipeline expectDataFlowTerminateMessage(String processId);
+    public ControlPlaneSignalingPipeline triggerDataFlowPreparation(String processId, String agreementId, String datasetId) {
+        stages.add(() -> {
+            monitor.debug("Triggering data flow preparation on control plane under test");
+            controlPlaneClient.triggerDataFlowPreparation(processId, agreementId, datasetId, endpoint.getAddress());
+        });
+        return this;
+    }
 
-    /**
-     * Registers a handler on the TCK data plane endpoint for the suspend message
-     * ({@code POST /dataflows/{processId}/suspend}) that the control plane sends when
-     * the transfer process is suspended.
-     */
-    ControlPlaneSignalingPipeline expectDataFlowSuspendMessage(String processId);
+    public ControlPlaneSignalingPipeline expectDataFlowPrepareMessage() {
+        registerMessageHandler(PREPARE_PATH, DataFlowPrepareMessage, Map.of("state", "PREPARED"));
+        return this;
+    }
 
-    /**
-     * Registers a handler on the TCK data plane endpoint for the resume message
-     * ({@code POST /dataflows/{processId}/resume}) that the control plane sends when
-     * the transfer process is resumed.
-     */
-    ControlPlaneSignalingPipeline expectDataFlowResumeMessage(String processId);
+    public ControlPlaneSignalingPipeline expectDataFlowStartMessage() {
+        registerMessageHandler(START_PATH, DataFlowStartMessage, Map.of("state", "STARTED"));
+        return this;
+    }
 
-    /**
-     * Waits until the TCK data plane has received the DataFlowPrepareMessage.
-     */
-    ControlPlaneSignalingPipeline thenWaitForPrepareMessage();
+    public ControlPlaneSignalingPipeline expectDataFlowStartedNotificationMessage() {
+        registerMessageHandler(STARTED_PATH_PATTERN, DataFlowStartedNotificationMessage, emptyMap());
+        return this;
+    }
 
-    ControlPlaneSignalingPipeline thenWaitForDataFlowStartMessage();
+    public ControlPlaneSignalingPipeline expectDataFlowCompletedMessage(String processId) {
+        registerMessageHandler(COMPLETED_PATH_PATTERN, null, emptyMap());
+        return this;
+    }
 
+    public ControlPlaneSignalingPipeline expectDataFlowTerminateMessage(String processId) {
+        registerMessageHandler(TERMINATE_PATH_PATTERN, DataFlowTerminateMessage, emptyMap());
+        return this;
+    }
 
-    /**
-     * Waits until the TCK data plane has received the completed notification.
-     */
-    ControlPlaneSignalingPipeline thenWaitForCompletedMessage();
+    public ControlPlaneSignalingPipeline expectDataFlowSuspendMessage(String processId) {
+        registerMessageHandler(SUSPEND_PATH_PATTERN, DataFlowSuspendMessage, emptyMap());
+        return this;
+    }
 
-    /**
-     * Waits until the TCK data plane has received the terminate message.
-     */
-    ControlPlaneSignalingPipeline thenWaitForTerminateMessage();
+    public ControlPlaneSignalingPipeline expectDataFlowResumeMessage(String processId) {
+        registerMessageHandler(RESUME_PATH_PATTERN, DataFlowResumeMessage, Map.of("state", "STARTED"));
+        return this;
+    }
 
-    ControlPlaneSignalingPipeline thenWaitForTransferRequestMessage();
+    public ControlPlaneSignalingPipeline thenWaitForPrepareMessage() {
+        return thenWait("DataFlowPrepareMessage to be received by TCK data plane", lastDpsCallOn(PREPARE_PATH));
+    }
 
-    ControlPlaneSignalingPipeline thenWaitForTransferToBeInState(String state);
+    public ControlPlaneSignalingPipeline thenWaitForDataFlowStartMessage() {
+        return thenWait("DataFlowStartMessage to be received by TCK data plane", lastDpsCallOn(START_PATH));
+    }
 
-    ControlPlaneSignalingPipeline sendTransferRequestMessage(String agreementId, String transferType);
+    public ControlPlaneSignalingPipeline thenWaitForCompletedMessage() {
+        return thenWait("completed notification to be received by TCK data plane", lastDpsCallOn(COMPLETED_PATH_PATTERN));
+    }
 
-    ControlPlaneSignalingPipeline sendTransferStartMessage(String processId);
+    public ControlPlaneSignalingPipeline thenWaitForTerminateMessage() {
+        return thenWait("DataFlowTerminateMessage to be received by TCK data plane", lastDpsCallOn(TERMINATE_PATH_PATTERN));
+    }
 
-    ControlPlaneSignalingPipeline thenWaitForStartedNotificationMessage();
+    public ControlPlaneSignalingPipeline thenWaitForSuspendMessage() {
+        return thenWait("DataFlowSuspendMessage to be received by TCK data plane", lastDpsCallOn(SUSPEND_PATH_PATTERN));
+    }
 
-    ControlPlaneSignalingPipeline sendTransferCompletionMessage(String processId);
+    public ControlPlaneSignalingPipeline thenWaitForResumeMessage() {
+        return thenWait("DataFlowResumeMessage to be received by TCK data plane", lastDpsCallOn(RESUME_PATH_PATTERN));
+    }
 
-    ControlPlaneSignalingPipeline sendTransferTerminationMessage(String processId);
+    public ControlPlaneSignalingPipeline thenWaitForStartedNotificationMessage() {
+        return thenWait("DataFlowStartedNotificationMessage to be received by TCK data plane", lastDpsCallOn(STARTED_PATH_PATTERN));
+    }
 
-    /**
-     * Waits until the TCK data plane has received the suspend message.
-     */
-    ControlPlaneSignalingPipeline thenWaitForSuspendMessage();
+    private Callable<Boolean> lastDpsCallOn(String path) {
+        return () -> lastDpsReceivedMessage.get() != null && lastDpsReceivedMessage.get().path().equals(path);
+    }
 
-    /**
-     * Waits until the TCK data plane has received the resume message.
-     */
-    ControlPlaneSignalingPipeline thenWaitForResumeMessage();
+    public ControlPlaneSignalingPipeline thenWaitForTransferRequestMessage() {
+        return thenWait("TransferRequestedMessage to be received", () -> lastDspReceivedMessage.get() != null);
+    }
 
-    ControlPlaneSignalingPipeline sendTransferSuspensionMessage(String processId);
+    public ControlPlaneSignalingPipeline thenWaitForTransferToBeInState(String state) {
+        return thenWait("transfer to be in state " + state, () -> {
+            var id = counterPartyProcessId.get();
+            if (id == null) {
+                throw new RuntimeException("Cannot signal completion: no actual process ID received from prepare message");
+            }
+            var actualState = dspClient.dspTransferState(id);
+            monitor.debug("TCK. DSP: expecting processId %s state to be %s. Actual state: %s".formatted(id, state, actualState));
+            return Objects.equals(actualState, state);
+        });
+    }
+
+    public ControlPlaneSignalingPipeline sendTransferRequestMessage(String agreementId, String transferType) {
+        stages.add(() -> {
+            monitor.debug("Send DSP TransferRequestMessage");
+            var id = dspClient.sendTransferRequestMessage(endpoint.getAddress(), agreementId, transferType);
+            counterPartyProcessId.set(id);
+        });
+        return this;
+    }
+
+    public ControlPlaneSignalingPipeline sendTransferStartMessage(String processId) {
+        stages.add(() -> {
+            var id = counterPartyProcessId.get();
+            if (id == null) {
+                throw new RuntimeException("Cannot signal start: no actual process ID received from prepare message");
+            }
+            monitor.debug("TCK. DSP: send TransferStartMessage for processId=" + id);
+            dspClient.sendTransferStartMessage(id);
+        });
+        return this;
+    }
+
+    public ControlPlaneSignalingPipeline sendTransferCompletionMessage(String processId) {
+        stages.add(() -> {
+            var id = counterPartyProcessId.get();
+            if (id == null) {
+                throw new RuntimeException("Cannot signal completion: no actual process ID received from prepare message");
+            }
+            monitor.debug("TCK. DSP: send TransferCompletionMessage for processId=" + id);
+            dspClient.sendTransferCompletionMessage(id);
+        });
+        return this;
+    }
+
+    public ControlPlaneSignalingPipeline sendTransferTerminationMessage(String processId) {
+        stages.add(() -> {
+            var id = counterPartyProcessId.get();
+            if (id == null) {
+                throw new RuntimeException("Cannot signal termination: no actual process ID received from prepare message");
+            }
+            monitor.debug("TCK. DSP: send TransferTerminationMessage for processId=" + id);
+            dspClient.sendTransferTerminationMessage(id);
+        });
+        return this;
+    }
+
+    public ControlPlaneSignalingPipeline sendTransferSuspensionMessage(String processId) {
+        stages.add(() -> {
+            var id = counterPartyProcessId.get();
+            if (id == null) {
+                throw new RuntimeException("Cannot signal suspension: no actual process ID received");
+            }
+            monitor.debug("TCK. DSP: send TransferSuspensionMessage for processId=" + id);
+            dspClient.sendTransferSuspensionMessage(id);
+        });
+        return this;
+    }
+
+    private void registerMessageHandler(String path, DpsMessage dspMessage, Map<String, String> responseBody) {
+        var latch = new CountDownLatch(1);
+        expectLatches.add(latch);
+        stages.add(() ->
+                endpoint.registerProtocolHandler(path, (headers, body) -> {
+                    Map<String, Object> message = null;
+                    if (dspMessage != null) {
+                        var result = deserializeDps(body, dspMessage);
+                        message = result.content();
+                        if (message == null) {
+                            return badRequest(result.validationErrors());
+                        }
+                    }
+
+                    lastDpsReceivedMessage.set(new ReceivedDpsMessage(path, dspMessage, message));
+                    monitor.debug("Received call to %s endpoint from control plane. Content: %s".formatted(path, message));
+                    endpoint.deregisterHandler(path);
+                    latch.countDown();
+
+                    return success(responseBody);
+                }));
+    }
+
+    private void registerDspTransferRequestHandler() {
+        monitor.message("TCK. DSP: registerDspTransferRequestHandler");
+        endpoint.registerProtocolHandler(DSP_REQUEST_PATH, (headers, body) -> {
+            try {
+                var message = mapper.readValue(body, Map.class);
+                lastDspReceivedMessage.set(message);
+                counterPartyProcessId.set((String) message.get("consumerPid"));
+                monitor.debug("Received TransferRequestMessage from control plane: %s, processId=%s".formatted(message, counterPartyProcessId.get()));
+                return new HandlerResponse(200, mapper.writeValueAsString(Map.of(
+                        "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
+                        "@type", "TransferProcess",
+                        "providerPid", UUID.randomUUID().toString(),
+                        "consumerPid", counterPartyProcessId.get()
+                )));
+            } catch (IOException e) {
+                return new HandlerResponse(400, "Failed to parse TransferRequestMessage: " + e.getMessage());
+            }
+        });
+    }
+
+    private void registerDspTransferStartHandler() {
+        monitor.message("TCK. DSP: registerDspTransferStartHandler");
+        endpoint.registerProtocolHandler(DSP_START_PATH_PATTERN, (headers, body) -> {
+            try {
+                var message = mapper.readValue(body, Map.class);
+                lastDspReceivedMessage.set(message);
+                counterPartyProcessId.set((String) message.get("providerPid"));
+                monitor.debug("Received TransferStartMessage from control plane: %s. processId=%s".formatted(message, counterPartyProcessId.get()));
+                return new HandlerResponse(200, mapper.writeValueAsString(Map.of(
+                        "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
+                        "@type", "TransferProcess",
+                        "providerPid", counterPartyProcessId.get(),
+                        "consumerPid", UUID.randomUUID()
+                )));
+            } catch (IOException e) {
+                return new HandlerResponse(400, "Failed to parse TransferStartMessage: " + e.getMessage());
+            }
+        });
+    }
+
+    private DpsDeserializationResult deserializeDps(InputStream body, DpsMessage message) {
+        try {
+            var node = mapper.readValue(body, JsonNode.class);
+            var errors = message.getValidator().validate(node);
+
+            if (!errors.isEmpty()) {
+                return new DpsDeserializationResult(null, errors);
+            }
+            return new DpsDeserializationResult(mapper.convertValue(node, Map.class), null);
+        } catch (IOException e) {
+            var error = Error.builder().message("Failed to parse %s: %s".formatted(message.name(), e.getMessage())).build();
+            return new DpsDeserializationResult(null, List.of(error));
+        }
+    }
+
+    private HandlerResponse success(Map<String, String> responseBody) {
+        try {
+            return new HandlerResponse(200, mapper.writeValueAsString(responseBody));
+        } catch (JsonProcessingException e) {
+            return new HandlerResponse(500, "Unexpected exception: " + e.getMessage());
+        }
+    }
+
+    private HandlerResponse badRequest(List<Error> validationErrors) {
+        try {
+            return new HandlerResponse(400, "Error evaluating body: " + mapper.writeValueAsString(validationErrors));
+        } catch (JsonProcessingException e) {
+            return new HandlerResponse(500, "Unexpected exception: " + e.getMessage());
+        }
+    }
+
+    record DpsDeserializationResult(Map<String, Object> content, List<Error> validationErrors) {}
+
+    record ReceivedDpsMessage(String path, DpsMessage type, Map<String, Object> content) {}
 }

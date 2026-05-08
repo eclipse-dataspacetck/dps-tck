@@ -21,13 +21,12 @@ import org.eclipse.dataspacetck.core.spi.system.ServiceConfiguration;
 import org.eclipse.dataspacetck.core.spi.system.ServiceResolver;
 import org.eclipse.dataspacetck.core.spi.system.SystemConfiguration;
 import org.eclipse.dataspacetck.core.spi.system.SystemLauncher;
-import org.eclipse.dataspacetck.dps.system.pipeline.ControlPlaneSignalingPipeline;
 import org.eclipse.dataspacetck.dps.system.client.http.HttpControlPlaneClient;
 import org.eclipse.dataspacetck.dps.system.client.http.HttpDspClient;
 import org.eclipse.dataspacetck.dps.system.client.local.LocalControlPlaneClient;
 import org.eclipse.dataspacetck.dps.system.client.local.LocalDspClient;
 import org.eclipse.dataspacetck.dps.system.connector.LocalControlPlaneConnector;
-import org.eclipse.dataspacetck.dps.system.pipeline.ControlPlaneSignalingPipelineImpl;
+import org.eclipse.dataspacetck.dps.system.pipeline.ControlPlaneSignalingPipeline;
 import org.jspecify.annotations.NonNull;
 
 import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_PREFIX;
@@ -77,17 +76,17 @@ public class DpsSystemLauncher implements SystemLauncher {
         return null;
     }
 
-    private @NonNull ControlPlaneSignalingPipelineImpl httpPipeline(CallbackEndpoint callbackEndpoint) {
+    private @NonNull ControlPlaneSignalingPipeline httpPipeline(CallbackEndpoint callbackEndpoint) {
         var controlPlaneClient = new HttpControlPlaneClient(controlPlaneWebhookUrl, monitor, mapper);
         var dspClient = new HttpDspClient(controlPlaneProtocolUrl, monitor, mapper);
-        return new ControlPlaneSignalingPipelineImpl(controlPlaneClient, dspClient, callbackEndpoint, monitor, waitTime, mapper);
+        return new ControlPlaneSignalingPipeline(controlPlaneClient, dspClient, callbackEndpoint, monitor, waitTime, mapper);
     }
 
-    private @NonNull ControlPlaneSignalingPipelineImpl localPipeline(CallbackEndpoint callbackEndpoint) {
+    private @NonNull ControlPlaneSignalingPipeline localPipeline(CallbackEndpoint callbackEndpoint) {
         var connector = new LocalControlPlaneConnector(monitor);
         var controlPlaneClient = new LocalControlPlaneClient(connector);
         var dspClient = new LocalDspClient(connector);
-        return new ControlPlaneSignalingPipelineImpl(controlPlaneClient, dspClient, callbackEndpoint, monitor, waitTime, mapper);
+        return new ControlPlaneSignalingPipeline(controlPlaneClient, dspClient, callbackEndpoint, monitor, waitTime, mapper);
     }
 
     private String getRequiredStringSetting(SystemConfiguration configuration, String key) {
