@@ -18,10 +18,11 @@ import org.eclipse.dataspacetck.api.system.MandatoryTest;
 import org.eclipse.dataspacetck.api.system.TestSequenceDiagram;
 import org.eclipse.dataspacetck.core.api.system.ConfigParam;
 import org.eclipse.dataspacetck.core.api.system.Inject;
-import org.eclipse.dataspacetck.core.api.verification.AbstractVerificationTest;
+import org.eclipse.dataspacetck.core.system.SystemBootstrapExtension;
 import org.eclipse.dataspacetck.dps.system.pipeline.ControlPlaneSignalingPipeline;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import static java.util.UUID.randomUUID;
 
@@ -47,7 +48,8 @@ import static java.util.UUID.randomUUID;
  */
 @Tag("base-compliance")
 @DisplayName("CP_P: Control plane provider signaling scenarios")
-public class ControlPlaneProviderSignalingTest extends AbstractVerificationTest {
+@ExtendWith(SystemBootstrapExtension.class)
+public class ControlPlaneProviderSignalingTest {
 
     @Inject
     protected ControlPlaneSignalingPipeline signalingPipeline;
