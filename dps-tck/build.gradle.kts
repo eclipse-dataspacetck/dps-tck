@@ -18,8 +18,8 @@ plugins {
 
 dependencies {
     api(libs.tck.common.api)
-    api(libs.tck.dsp.core)
-    api(libs.tck.dsp.tck.runtime)
+    api(libs.tck.core)
+    api(libs.tck.runtime)
 
     implementation(libs.assertj)
     implementation(libs.awaitility)
