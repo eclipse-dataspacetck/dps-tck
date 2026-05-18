@@ -17,6 +17,7 @@ package org.eclipse.dataspacetck.dps.system.pipeline;
 import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaLocation;
 import com.networknt.schema.SchemaRegistry;
+import com.networknt.schema.SpecificationVersion;
 
 public enum DpsMessage {
     DataFlowPrepareMessage,
@@ -32,6 +33,7 @@ public enum DpsMessage {
 
     DpsMessage() {
         validator = SchemaRegistry.builder()
+                .defaultDialectId(SpecificationVersion.DRAFT_7.getDialectId())
                 .schemaIdResolvers(schemaIdResolvers -> schemaIdResolvers
                         .mapPrefix(DSPACE_SIG_NAMESPACE + "/", "classpath:schema/")
                         .mapPrefix("https://w3id.org/dspace/2025/1/transfer/", "classpath:schema/dsp/")
