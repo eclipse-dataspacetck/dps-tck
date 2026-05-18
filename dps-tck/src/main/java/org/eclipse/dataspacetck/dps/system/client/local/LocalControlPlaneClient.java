@@ -29,7 +29,22 @@ public class LocalControlPlaneClient implements ControlPlaneClient {
     }
 
     @Override
-    public void triggerDataFlowPreparation(String processId, String agreementId, String datasetId, String dataPlaneUrl) {
-        connector.triggerDataFlowPreparation(processId, agreementId, datasetId, dataPlaneUrl);
+    public String triggerDataFlowPreparation(String agreementId, String datasetId, String dataPlaneUrl) {
+        return connector.triggerDataFlowPreparation(agreementId, datasetId, dataPlaneUrl);
+    }
+
+    @Override
+    public String triggerDataFlowPreparationAsync(String agreementId, String datasetId, String dataPlaneUrl) {
+        return connector.triggerDataFlowPreparationAsync(agreementId, datasetId, dataPlaneUrl);
+    }
+
+    @Override
+    public void notifyPrepared(String callbackAddress, String processId, String dataFlowId) {
+        connector.receivePreparedCallback(processId, dataFlowId);
+    }
+
+    @Override
+    public void notifyStarted(String callbackAddress, String processId, String dataFlowId) {
+        connector.receiveStartedCallback(processId, dataFlowId);
     }
 }

@@ -45,15 +45,34 @@ public class HttpControlPlaneClient implements ControlPlaneClient {
     }
 
     @Override
-    public void triggerDataFlowPreparation(String processId, String agreementId, String datasetId, String dataPlaneUrl) {
+    public String triggerDataFlowPreparation(String agreementId, String datasetId, String dataPlaneUrl) {
+        return triggerInternal(agreementId, datasetId, dataPlaneUrl, false);
+    }
+
+    @Override
+    public String triggerDataFlowPreparationAsync(String agreementId, String datasetId, String dataPlaneUrl) {
+        return triggerInternal(agreementId, datasetId, dataPlaneUrl, true);
+    }
+
+    @Override
+    public void notifyPrepared(String callbackAddress, String processId, String dataFlowId) {
+        sendStatusCallback(callbackAddress + "/transfers/" + processId + "/dataflow/prepared", dataFlowId, "PREPARED");
+    }
+
+    @Override
+    public void notifyStarted(String callbackAddress, String processId, String dataFlowId) {
+        sendStatusCallback(callbackAddress + "/transfers/" + processId + "/dataflow/started", dataFlowId, "STARTED");
+    }
+
+    private String triggerInternal(String agreementId, String datasetId, String dataPlaneUrl, boolean async) {
         try {
             var url = webhookUrl + "/dataflows/trigger";
             var body = mapper.writeValueAsString(Map.of(
-                    "processId", processId,
                     "agreementId", agreementId,
                     "datasetId", datasetId,
                     "dataPlaneUrl", dataPlaneUrl,
-                    "dspUrl", dataPlaneUrl // TODO: refactor
+                    "dspUrl", dataPlaneUrl, // TODO: refactor
+                    "async", async
             ));
             var request = new Request.Builder()
                     .url(url)
@@ -65,9 +84,37 @@ public class HttpControlPlaneClient implements ControlPlaneClient {
                 if (!response.isSuccessful()) {
                     throw new RuntimeException("Failed to trigger data flow preparation: HTTP " + response.code());
                 }
+                var responseBody = response.body().string();
+                var responseJson = mapper.readValue(responseBody, Map.class);
+                var processId = (String) responseJson.get("id");
+                if (processId == null) {
+                    throw new RuntimeException("Control plane response missing 'id' field");
+                }
+                return processId;
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to trigger data flow preparation", e);
+        }
+    }
+
+    private void sendStatusCallback(String url, String dataFlowId, String state) {
+        try {
+            var body = mapper.writeValueAsString(Map.of(
+                    "dataFlowId", dataFlowId,
+                    "state", state
+            ));
+            var request = new Request.Builder()
+                    .url(url)
+                    .post(RequestBody.create(body, JSON))
+                    .build();
+            monitor.debug("Sending " + state + " callback to " + url);
+            try (var response = httpClient.newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    throw new RuntimeException("Failed to send " + state + " callback: HTTP " + response.code());
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to send status callback", e);
         }
     }
 

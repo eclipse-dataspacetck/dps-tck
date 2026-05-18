@@ -45,6 +45,7 @@ public class LocalControlPlaneConnector {
 
     private final Map<String, String> transferStates = new ConcurrentHashMap<>();
     private final AtomicReference<String> dataPlaneBaseUrl = new AtomicReference<>();
+    private final AtomicReference<String> pendingPrepareAgreementId = new AtomicReference<>();
     private final OkHttpClient httpClient = new OkHttpClient();
     private final Monitor monitor;
 
@@ -52,14 +53,51 @@ public class LocalControlPlaneConnector {
         this.monitor = monitor;
     }
 
-    public void triggerDataFlowPreparation(String processId, String agreementId, String datasetId, String dataPlaneUrl) {
+    public String triggerDataFlowPreparation(String agreementId, String datasetId, String dataPlaneUrl) {
         dataPlaneBaseUrl.set(dataPlaneUrl);
+        var processId = UUID.randomUUID().toString();
         var consumerPid = UUID.randomUUID().toString();
 
         sendPrepareMessage(dataPlaneUrl, processId, agreementId, datasetId);
         sendDspTransferRequestMessage(dataPlaneUrl, consumerPid, agreementId);
 
         transferStates.put(consumerPid, "REQUESTED");
+        return processId;
+    }
+
+    /**
+     * Triggers data flow preparation without immediately sending the DSP TransferRequestMessage.
+     * The DSP TransferRequestMessage is deferred until {@link #receivePreparedCallback} is called,
+     * simulating a CUT that waits for the async /dataflow/prepared callback before proceeding.
+     */
+    public String triggerDataFlowPreparationAsync(String agreementId, String datasetId, String dataPlaneUrl) {
+        dataPlaneBaseUrl.set(dataPlaneUrl);
+        pendingPrepareAgreementId.set(agreementId);
+        var processId = UUID.randomUUID().toString();
+        sendPrepareMessage(dataPlaneUrl, processId, agreementId, datasetId);
+        return processId;
+    }
+
+    /**
+     * Simulates the CUT receiving the async /dataflow/prepared callback.
+     * After receiving it, the CUT sends the DSP TransferRequestMessage.
+     */
+    public void receivePreparedCallback(String processId, String dataFlowId) {
+        var agreementId = pendingPrepareAgreementId.get();
+        var dataPlaneUrl = dataPlaneBaseUrl.get();
+        monitor.debug("Local CUT: received PREPARED callback for dataFlowId=" + dataFlowId + ", sending TransferRequestMessage");
+        var consumerPid = UUID.randomUUID().toString();
+        sendDspTransferRequestMessage(dataPlaneUrl, consumerPid, agreementId);
+        transferStates.put(consumerPid, "REQUESTED");
+    }
+
+    /**
+     * Simulates the CUT receiving the async /dataflow/started callback (provider side).
+     * The CUT transitions the transfer to STARTED state.
+     */
+    public void receiveStartedCallback(String processId, String dataFlowId) {
+        monitor.debug("Local CUT: received STARTED callback for dataFlowId=" + dataFlowId);
+        transferStates.put(processId, "STARTED");
     }
 
     public String getTransferState(String processId) {

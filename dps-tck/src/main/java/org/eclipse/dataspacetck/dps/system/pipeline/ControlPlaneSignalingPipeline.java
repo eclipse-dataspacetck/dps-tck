@@ -58,6 +58,9 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
     private static final String SUSPEND_PATH_PATTERN = "/dataflows/[^/]+/suspend";
     private static final String RESUME_PATH_PATTERN = "/dataflows/[^/]+/resume";
 
+    private static final String PREPARING_STATE = "PREPARING";
+    private static final String STARTING_STATE = "STARTING";
+
     private static final String DSP_REQUEST_PATH = "/transfers/request";
     private static final String DSP_START_PATH_PATTERN = "/transfers/[^/]+/start";
 
@@ -66,6 +69,9 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
     private final AtomicReference<ReceivedDpsMessage> lastDpsReceivedMessage = new AtomicReference<>();
     private final AtomicReference<Map<String, Object>> lastDspReceivedMessage = new AtomicReference<>();
     private final AtomicReference<String> counterPartyProcessId = new AtomicReference<>();
+    private final AtomicReference<String> capturedProcessId = new AtomicReference<>();
+    private final AtomicReference<String> lastReceivedDataFlowId = new AtomicReference<>();
+    private final AtomicReference<String> lastReceivedCallbackAddress = new AtomicReference<>();
     private final ObjectMapper mapper;
 
     public ControlPlaneSignalingPipeline(ControlPlaneClient controlPlaneClient, DspClient dspClient,
@@ -80,10 +86,11 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         registerDspTransferStartHandler();
     }
 
-    public ControlPlaneSignalingPipeline triggerDataFlowPreparation(String processId, String agreementId, String datasetId) {
+    public ControlPlaneSignalingPipeline triggerDataFlowPreparation(String agreementId, String datasetId) {
         stages.add(() -> {
             monitor.debug("Triggering data flow preparation on control plane under test");
-            controlPlaneClient.triggerDataFlowPreparation(processId, agreementId, datasetId, endpoint.getAddress());
+            var processId = controlPlaneClient.triggerDataFlowPreparation(agreementId, datasetId, endpoint.getAddress());
+            capturedProcessId.set(processId);
         });
         return this;
     }
@@ -103,23 +110,70 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         return this;
     }
 
-    public ControlPlaneSignalingPipeline expectDataFlowCompletedMessage(String processId) {
+    public ControlPlaneSignalingPipeline expectDataFlowCompletedMessage() {
         registerMessageHandler(COMPLETED_PATH_PATTERN, null, emptyMap());
         return this;
     }
 
-    public ControlPlaneSignalingPipeline expectDataFlowTerminateMessage(String processId) {
+    public ControlPlaneSignalingPipeline expectDataFlowTerminateMessage() {
         registerMessageHandler(TERMINATE_PATH_PATTERN, DataFlowTerminateMessage, emptyMap());
         return this;
     }
 
-    public ControlPlaneSignalingPipeline expectDataFlowSuspendMessage(String processId) {
+    public ControlPlaneSignalingPipeline expectDataFlowSuspendMessage() {
         registerMessageHandler(SUSPEND_PATH_PATTERN, DataFlowSuspendMessage, emptyMap());
         return this;
     }
 
-    public ControlPlaneSignalingPipeline expectDataFlowResumeMessage(String processId) {
+    public ControlPlaneSignalingPipeline expectDataFlowResumeMessage() {
         registerMessageHandler(RESUME_PATH_PATTERN, DataFlowResumeMessage, Map.of("state", "STARTED"));
+        return this;
+    }
+
+    public ControlPlaneSignalingPipeline expectDataFlowPrepareMessageAsync() {
+        registerAsyncMessageHandler(PREPARE_PATH, DataFlowPrepareMessage, PREPARING_STATE);
+        return this;
+    }
+
+    public ControlPlaneSignalingPipeline expectDataFlowStartMessageAsync() {
+        registerAsyncMessageHandler(START_PATH, DataFlowStartMessage, STARTING_STATE);
+        return this;
+    }
+
+    public ControlPlaneSignalingPipeline thenSendPreparedCallback() {
+        stages.add(() -> {
+            var dataFlowId = lastReceivedDataFlowId.get();
+            var callbackAddress = lastReceivedCallbackAddress.get();
+            if (dataFlowId == null) {
+                throw new RuntimeException("Cannot send PREPARED callback: no dataFlowId received from async prepare response");
+            }
+            var processId = capturedProcessId.get();
+            monitor.debug("TCK: sending PREPARED callback for dataFlowId=" + dataFlowId + " to " + callbackAddress);
+            controlPlaneClient.notifyPrepared(callbackAddress, processId, dataFlowId);
+        });
+        return this;
+    }
+
+    public ControlPlaneSignalingPipeline thenSendStartedCallback() {
+        stages.add(() -> {
+            var dataFlowId = lastReceivedDataFlowId.get();
+            var callbackAddress = lastReceivedCallbackAddress.get();
+            if (dataFlowId == null) {
+                throw new RuntimeException("Cannot send STARTED callback: no dataFlowId received from async start response");
+            }
+            var processId = capturedProcessId.get();
+            monitor.debug("TCK: sending STARTED callback for dataFlowId=" + dataFlowId + " to " + callbackAddress);
+            controlPlaneClient.notifyStarted(callbackAddress, processId, dataFlowId);
+        });
+        return this;
+    }
+
+    public ControlPlaneSignalingPipeline triggerDataFlowPreparationAsync(String agreementId, String datasetId) {
+        stages.add(() -> {
+            monitor.debug("Triggering async data flow preparation on control plane under test");
+            var processId = controlPlaneClient.triggerDataFlowPreparationAsync(agreementId, datasetId, endpoint.getAddress());
+            capturedProcessId.set(processId);
+        });
         return this;
     }
 
@@ -180,7 +234,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         return this;
     }
 
-    public ControlPlaneSignalingPipeline sendTransferStartMessage(String processId) {
+    public ControlPlaneSignalingPipeline sendTransferStartMessage() {
         stages.add(() -> {
             var id = counterPartyProcessId.get();
             if (id == null) {
@@ -192,7 +246,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         return this;
     }
 
-    public ControlPlaneSignalingPipeline sendTransferCompletionMessage(String processId) {
+    public ControlPlaneSignalingPipeline sendTransferCompletionMessage() {
         stages.add(() -> {
             var id = counterPartyProcessId.get();
             if (id == null) {
@@ -204,7 +258,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         return this;
     }
 
-    public ControlPlaneSignalingPipeline sendTransferTerminationMessage(String processId) {
+    public ControlPlaneSignalingPipeline sendTransferTerminationMessage() {
         stages.add(() -> {
             var id = counterPartyProcessId.get();
             if (id == null) {
@@ -216,7 +270,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         return this;
     }
 
-    public ControlPlaneSignalingPipeline sendTransferSuspensionMessage(String processId) {
+    public ControlPlaneSignalingPipeline sendTransferSuspensionMessage() {
         stages.add(() -> {
             var id = counterPartyProcessId.get();
             if (id == null) {
@@ -248,6 +302,38 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                     latch.countDown();
 
                     return success(responseBody);
+                }));
+    }
+
+    private void registerAsyncMessageHandler(String path, DpsMessage dspMessage, String transitionState) {
+        var latch = new CountDownLatch(1);
+        expectLatches.add(latch);
+        stages.add(() ->
+                endpoint.registerProtocolHandler(path, (headers, body) -> {
+                    var result = deserializeDps(body, dspMessage);
+                    var message = result.content();
+                    if (message == null) {
+                        return badRequest(result.validationErrors());
+                    }
+
+                    var dataFlowId = UUID.randomUUID().toString();
+                    var callbackAddress = (String) message.get("callbackAddress");
+                    var processId = (String) message.get("processId");
+                    lastReceivedDataFlowId.set(dataFlowId);
+                    lastReceivedCallbackAddress.set(callbackAddress);
+                    capturedProcessId.set(processId);
+                    lastDpsReceivedMessage.set(new ReceivedDpsMessage(path, dspMessage, message));
+                    monitor.debug("Received async call to %s endpoint. Responding 202/%s, dataFlowId=%s".formatted(path, transitionState, dataFlowId));
+                    endpoint.deregisterHandler(path);
+                    latch.countDown();
+
+                    try {
+                        var responseBody = Map.of("dataFlowId", dataFlowId, "state", transitionState);
+                        return new HandlerResponse(202, mapper.writeValueAsString(responseBody),
+                                Map.of("Location", "/dataflows/" + dataFlowId + "/status"));
+                    } catch (JsonProcessingException e) {
+                        return new HandlerResponse(500, "Unexpected exception: " + e.getMessage());
+                    }
                 }));
     }
 

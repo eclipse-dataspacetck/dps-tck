@@ -34,15 +34,14 @@ import static java.util.UUID.randomUUID;
  *
  * <p>Interactions covered:
  * <ul>
- *   <li>{@code POST /dataflows/start} — DataFlowStartMessage dispatch after DSP TransferRequestMessage</li>
+ *   <li>{@code POST /dataflows/start} — DataFlowStartMessage dispatch after DSP TransferRequestMessage (sync and async)</li>
  *   <li>{@code POST /dataflows/{id}/suspend} — DataFlowSuspendMessage dispatch after DSP TransferSuspensionMessage</li>
  *   <li>{@code POST /dataflows/{id}/completed} — completed notification dispatch after DSP TransferCompletionMessage</li>
  *   <li>{@code POST /dataflows/{id}/terminate} — terminate notification dispatch after DSP TransferTerminationMessage</li>
  * </ul>
  *
- * <p>Interactions <strong>not yet covered</strong> (require pipeline extension):
+ * <p>Interactions <strong>not yet covered</strong>:
  * <ul>
- *   <li>Asynchronous start transition (HTTP 202 + {@code /dataflow/started} callback to the CP)</li>
  *   <li>The {@code /transfers/:transferId/dataflow/errored} callback from DP to CP on non-recoverable error</li>
  * </ul>
  */
@@ -53,9 +52,6 @@ public class ControlPlaneProviderSignalingTest {
 
     @Inject
     protected ControlPlaneSignalingPipeline signalingPipeline;
-
-    @ConfigParam
-    protected String processId = randomUUID().toString();
 
     @ConfigParam
     protected String agreementId = randomUUID().toString();
@@ -77,8 +73,8 @@ public class ControlPlaneProviderSignalingTest {
                 .expectDataFlowStartMessage()
                 .sendTransferRequestMessage(agreementId, "HttpData-PULL")
                 .thenWaitForDataFlowStartMessage()
-                .expectDataFlowCompletedMessage(processId)
-                .sendTransferCompletionMessage(processId)
+                .expectDataFlowCompletedMessage()
+                .sendTransferCompletionMessage()
                 .thenWaitForCompletedMessage()
                 .execute();
     }
@@ -100,8 +96,8 @@ public class ControlPlaneProviderSignalingTest {
                 .expectDataFlowStartMessage()
                 .sendTransferRequestMessage(agreementId, "HttpData-PULL")
                 .thenWaitForDataFlowStartMessage()
-                .expectDataFlowTerminateMessage(processId)
-                .sendTransferTerminationMessage(processId)
+                .expectDataFlowTerminateMessage()
+                .sendTransferTerminationMessage()
                 .thenWaitForTerminateMessage()
                 .execute();
     }
@@ -129,14 +125,14 @@ public class ControlPlaneProviderSignalingTest {
                 .expectDataFlowStartMessage()
                 .sendTransferRequestMessage(agreementId, "HttpData-PULL")
                 .thenWaitForDataFlowStartMessage()
-                .expectDataFlowSuspendMessage(processId)
-                .sendTransferSuspensionMessage(processId)
+                .expectDataFlowSuspendMessage()
+                .sendTransferSuspensionMessage()
                 .thenWaitForSuspendMessage()
-                .expectDataFlowResumeMessage(processId)
-                .sendTransferStartMessage(processId)
+                .expectDataFlowResumeMessage()
+                .sendTransferStartMessage()
                 .thenWaitForResumeMessage()
-                .expectDataFlowCompletedMessage(processId)
-                .sendTransferCompletionMessage(processId)
+                .expectDataFlowCompletedMessage()
+                .sendTransferCompletionMessage()
                 .thenWaitForCompletedMessage()
                 .execute();
     }
@@ -161,12 +157,39 @@ public class ControlPlaneProviderSignalingTest {
                 .expectDataFlowStartMessage()
                 .sendTransferRequestMessage(agreementId, "HttpData-PULL")
                 .thenWaitForDataFlowStartMessage()
-                .expectDataFlowSuspendMessage(processId)
-                .sendTransferSuspensionMessage(processId)
+                .expectDataFlowSuspendMessage()
+                .sendTransferSuspensionMessage()
                 .thenWaitForSuspendMessage()
-                .expectDataFlowTerminateMessage(processId)
-                .sendTransferTerminationMessage(processId)
+                .expectDataFlowTerminateMessage()
+                .sendTransferTerminationMessage()
                 .thenWaitForTerminateMessage()
+                .execute();
+    }
+
+    @MandatoryTest
+    @DisplayName("CP_P:03-01: Verify async DataFlowStartMessage: data plane responds 202+STARTING, sends /dataflow/started callback, and transfer completes")
+    @TestSequenceDiagram("""
+            participant TCK as Technology Compatibility Kit (consumer CP + provider data plane)
+            participant CUT as Provider Control-Plane Under Test
+
+            TCK->>CUT: DSP TransferRequestMessage (POST /transfers/request)
+            CUT->>TCK: DataFlowStartMessage (POST /dataflows/start)
+            TCK-->>CUT: 202 Accepted + DataFlowStatusMessage (state=STARTING)
+            TCK->>CUT: DataFlowStatusMessage callback (POST /transfers/{processId}/dataflow/started, state=STARTED)
+            CUT-->>TCK: 200 OK
+            TCK->>CUT: DSP TransferCompletionMessage (POST /transfers/{id}/completion)
+            CUT->>TCK: Completed notification (POST /dataflows/{processId}/completed)
+            """)
+    public void cp_p_03_01() {
+        signalingPipeline
+                .expectDataFlowStartMessageAsync()
+                .sendTransferRequestMessage(agreementId, "HttpData-PULL")
+                .thenWaitForDataFlowStartMessage()
+                .thenSendStartedCallback()
+                .thenWaitForTransferToBeInState("STARTED")
+                .expectDataFlowCompletedMessage()
+                .sendTransferCompletionMessage()
+                .thenWaitForCompletedMessage()
                 .execute();
     }
 }

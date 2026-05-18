@@ -34,7 +34,7 @@ import static java.util.UUID.randomUUID;
  *
  * <p>Interactions covered:
  * <ul>
- *   <li>{@code POST /dataflows/prepare} — DataFlowPrepareMessage dispatch</li>
+ *   <li>{@code POST /dataflows/prepare} — DataFlowPrepareMessage dispatch (sync and async)</li>
  *   <li>{@code POST /dataflows/{id}/suspend} — DataFlowSuspendMessage dispatch</li>
  *   <li>{@code POST /dataflows/{id}/resume} — DataFlowResumeMessage dispatch</li>
  *   <li>{@code POST /dataflows/{id}/completed} — completed notification dispatch</li>
@@ -42,10 +42,6 @@ import static java.util.UUID.randomUUID;
  *   <li>{@code POST /dataflows/{id}/started} — DataFlowStartedNotificationMessage dispatch</li>
  * </ul>
  *
- * <p>Interactions <strong>not yet covered</strong> (require pipeline extension): TODO!
- * <ul>
- *   <li>Asynchronous prepare/start transitions (HTTP 202 + {@code /dataflow/prepared} callback)</li>
- * </ul>
  */
 @Tag("base-compliance")
 @DisplayName("CP_C: Control plane consumer signaling scenarios")
@@ -54,9 +50,6 @@ public class ControlPlaneConsumerSignalingTest {
 
     @Inject
     protected ControlPlaneSignalingPipeline signalingPipeline;
-
-    @ConfigParam
-    protected String processId = randomUUID().toString();
 
     @ConfigParam
     protected String agreementId = randomUUID().toString();
@@ -84,16 +77,16 @@ public class ControlPlaneConsumerSignalingTest {
     public void cp_c_01_01() {
         signalingPipeline
                 .expectDataFlowPrepareMessage()
-                .triggerDataFlowPreparation(processId, agreementId, datasetId)
+                .triggerDataFlowPreparation(agreementId, datasetId)
                 .thenWaitForPrepareMessage()
                 .thenWaitForTransferRequestMessage()
                 .thenWaitForTransferToBeInState("REQUESTED")
                 .expectDataFlowStartedNotificationMessage()
-                .sendTransferStartMessage(processId)
+                .sendTransferStartMessage()
                 .thenWaitForStartedNotificationMessage()
                 .thenWaitForTransferToBeInState("STARTED")
-                .expectDataFlowCompletedMessage(processId)
-                .sendTransferCompletionMessage(processId)
+                .expectDataFlowCompletedMessage()
+                .sendTransferCompletionMessage()
                 .thenWaitForTransferToBeInState("COMPLETED")
                 .thenWaitForCompletedMessage()
                 .execute();
@@ -119,16 +112,16 @@ public class ControlPlaneConsumerSignalingTest {
     public void cp_c_01_02() {
         signalingPipeline
                 .expectDataFlowPrepareMessage()
-                .triggerDataFlowPreparation(processId, agreementId, datasetId)
+                .triggerDataFlowPreparation(agreementId, datasetId)
                 .thenWaitForPrepareMessage()
                 .thenWaitForTransferRequestMessage()
                 .thenWaitForTransferToBeInState("REQUESTED")
                 .expectDataFlowStartedNotificationMessage()
-                .sendTransferStartMessage(processId)
+                .sendTransferStartMessage()
                 .thenWaitForStartedNotificationMessage()
                 .thenWaitForTransferToBeInState("STARTED")
-                .expectDataFlowTerminateMessage(processId)
-                .sendTransferTerminationMessage(processId)
+                .expectDataFlowTerminateMessage()
+                .sendTransferTerminationMessage()
                 .thenWaitForTransferToBeInState("TERMINATED")
                 .thenWaitForTerminateMessage()
                 .execute();
@@ -160,22 +153,22 @@ public class ControlPlaneConsumerSignalingTest {
     public void cp_c_02_01() {
         signalingPipeline
                 .expectDataFlowPrepareMessage()
-                .triggerDataFlowPreparation(processId, agreementId, datasetId)
+                .triggerDataFlowPreparation(agreementId, datasetId)
                 .thenWaitForPrepareMessage()
                 .thenWaitForTransferRequestMessage()
                 .thenWaitForTransferToBeInState("REQUESTED")
                 .expectDataFlowStartedNotificationMessage()
-                .sendTransferStartMessage(processId)
+                .sendTransferStartMessage()
                 .thenWaitForStartedNotificationMessage()
                 .thenWaitForTransferToBeInState("STARTED")
-                .expectDataFlowSuspendMessage(processId)
-                .sendTransferSuspensionMessage(processId)
+                .expectDataFlowSuspendMessage()
+                .sendTransferSuspensionMessage()
                 .thenWaitForSuspendMessage()
-                .expectDataFlowResumeMessage(processId)
-                .sendTransferStartMessage(processId)
+                .expectDataFlowResumeMessage()
+                .sendTransferStartMessage()
                 .thenWaitForResumeMessage()
-                .expectDataFlowCompletedMessage(processId)
-                .sendTransferCompletionMessage(processId)
+                .expectDataFlowCompletedMessage()
+                .sendTransferCompletionMessage()
                 .thenWaitForTransferToBeInState("COMPLETED")
                 .thenWaitForCompletedMessage()
                 .execute();
@@ -204,21 +197,59 @@ public class ControlPlaneConsumerSignalingTest {
     public void cp_c_02_02() {
         signalingPipeline
                 .expectDataFlowPrepareMessage()
-                .triggerDataFlowPreparation(processId, agreementId, datasetId)
+                .triggerDataFlowPreparation(agreementId, datasetId)
                 .thenWaitForPrepareMessage()
                 .thenWaitForTransferRequestMessage()
                 .thenWaitForTransferToBeInState("REQUESTED")
                 .expectDataFlowStartedNotificationMessage()
-                .sendTransferStartMessage(processId)
+                .sendTransferStartMessage()
                 .thenWaitForStartedNotificationMessage()
                 .thenWaitForTransferToBeInState("STARTED")
-                .expectDataFlowSuspendMessage(processId)
-                .sendTransferSuspensionMessage(processId)
+                .expectDataFlowSuspendMessage()
+                .sendTransferSuspensionMessage()
                 .thenWaitForSuspendMessage()
-                .expectDataFlowTerminateMessage(processId)
-                .sendTransferTerminationMessage(processId)
+                .expectDataFlowTerminateMessage()
+                .sendTransferTerminationMessage()
                 .thenWaitForTransferToBeInState("TERMINATED")
                 .thenWaitForTerminateMessage()
+                .execute();
+    }
+
+    @MandatoryTest
+    @DisplayName("CP_C:03-01: Verify async DataFlowPrepareMessage is dispatched: data plane responds 202+PREPARING, sends /dataflow/prepared callback, and transfer completes")
+    @TestSequenceDiagram("""
+            participant TCK as Technology Compatibility Kit (consumer data plane + provider CP)
+            participant CUT as Consumer Control-Plane Under Test
+
+            TCK->>CUT: Trigger async data flow preparation (internal signal)
+            CUT->>TCK: DataFlowPrepareMessage (POST /dataflows/prepare)
+            TCK-->>CUT: 202 Accepted + DataFlowStatusMessage (state=PREPARING)
+            TCK->>CUT: DataFlowStatusMessage callback (POST /transfers/{processId}/dataflow/prepared, state=PREPARED)
+            CUT-->>TCK: 200 OK
+            CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
+            TCK-->>CUT: 200 OK + providerPid
+            TCK->>CUT: DSP TransferStartMessage
+            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started)
+            TCK-->>CUT: 200 OK
+            TCK->>CUT: DSP TransferCompletionMessage
+            CUT->>TCK: Completed notification (POST /dataflows/{processId}/completed)
+            """)
+    public void cp_c_03_01() {
+        signalingPipeline
+                .expectDataFlowPrepareMessageAsync()
+                .triggerDataFlowPreparationAsync(agreementId, datasetId)
+                .thenWaitForPrepareMessage()
+                .thenSendPreparedCallback()
+                .thenWaitForTransferRequestMessage()
+                .thenWaitForTransferToBeInState("REQUESTED")
+                .expectDataFlowStartedNotificationMessage()
+                .sendTransferStartMessage()
+                .thenWaitForStartedNotificationMessage()
+                .thenWaitForTransferToBeInState("STARTED")
+                .expectDataFlowCompletedMessage()
+                .sendTransferCompletionMessage()
+                .thenWaitForTransferToBeInState("COMPLETED")
+                .thenWaitForCompletedMessage()
                 .execute();
     }
 
