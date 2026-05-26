@@ -1,0 +1,38 @@
+#
+#  Copyright (c) 2026 Think-it GmbH
+#
+#  This program and the accompanying materials are made available under the
+#  terms of the Apache License, Version 2.0 which is available at
+#    https://www.apache.org/licenses/LICENSE-2.0
+#
+#  SPDX-License-Identifier: Apache-2.0
+#
+#  Contributors:
+#    Think-it GmbH - initial API and implementation
+#
+
+---
+name: Release preparation
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: the version to be released. If it ends with '.0' a proper release is created, bugfix otherwise
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        description: the version to be released. If it ends with '.0' a proper release is created, bugfix otherwise
+        required: true
+        type: string
+
+jobs:
+  Prepare-Release:
+    uses: eclipse-dataspacetck/tck-common/.github/workflows/tck-prepare-release.yml@main
+    permissions:
+      contents: write
+    secrets: inherit
+    with:
+      version: ${{ inputs.version }}
