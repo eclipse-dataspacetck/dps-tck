@@ -23,6 +23,7 @@ import org.eclipse.dataspacetck.core.spi.boot.Monitor;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -111,19 +112,16 @@ public class LocalControlPlaneConnector {
             transferStates.put(processId, "RESUMED");
             var baseUrl = dataPlaneBaseUrl.get();
             if (baseUrl != null) {
-                try {
-                    var body = MAPPER.writeValueAsString(Map.of("messageId", UUID.randomUUID().toString(), "processId", processId));
-                    sendAsync(baseUrl + "/dataflows/" + processId + "/resume", body, "resume notification");
-                } catch (IOException e) {
-                    throw new RuntimeException("Failed to build DataFlowResumeMessage", e);
-                }
+                var message = Map.of("messageId", UUID.randomUUID().toString(), "processId", processId);
+                sendAsync(baseUrl + "/dataflows/" + processId + "/resume", serialize(message), "resume notification");
             }
         } else {
             monitor.debug("Local CUT: transfer started for processId=" + processId);
             transferStates.put(processId, "STARTED");
             var baseUrl = dataPlaneBaseUrl.get();
             if (baseUrl != null) {
-                sendAsync(baseUrl + "/dataflows/" + processId + "/started", "{}", "DataFlowStartedNotificationMessage");
+                var message = Map.of("messageId", UUID.randomUUID().toString());
+                sendAsync(baseUrl + "/dataflows/" + processId + "/started", serialize(message), "DataFlowStartedNotificationMessage");
             }
         }
     }
@@ -133,7 +131,8 @@ public class LocalControlPlaneConnector {
         transferStates.put(processId, "COMPLETED");
         var baseUrl = dataPlaneBaseUrl.get();
         if (baseUrl != null) {
-            sendAsync(baseUrl + "/dataflows/" + processId + "/completed", "{}", "completed notification");
+            var message = Map.of("messageId", UUID.randomUUID().toString());
+            sendAsync(baseUrl + "/dataflows/" + processId + "/completed", serialize(message), "completed notification");
         }
     }
 
@@ -142,7 +141,8 @@ public class LocalControlPlaneConnector {
         transferStates.put(processId, "TERMINATED");
         var baseUrl = dataPlaneBaseUrl.get();
         if (baseUrl != null) {
-            sendAsync(baseUrl + "/dataflows/" + processId + "/terminate", "{}", "terminate notification");
+            var message = Map.of("messageId", UUID.randomUUID().toString());
+            sendAsync(baseUrl + "/dataflows/" + processId + "/terminate", serialize(message), "terminate notification");
         }
     }
 
@@ -151,12 +151,8 @@ public class LocalControlPlaneConnector {
         transferStates.put(processId, "SUSPENDED");
         var baseUrl = dataPlaneBaseUrl.get();
         if (baseUrl != null) {
-            try {
-                var body = MAPPER.writeValueAsString(Map.of("reason", "suspended by consumer"));
-                sendAsync(baseUrl + "/dataflows/" + processId + "/suspend", body, "suspend notification");
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to build DataFlowSuspendMessage", e);
-            }
+            var message = Map.of("messageId", UUID.randomUUID().toString(), "reason", "suspended by consumer");
+            sendAsync(baseUrl + "/dataflows/" + processId + "/suspend", serialize(message), "suspend notification");
         }
     }
 
@@ -170,7 +166,20 @@ public class LocalControlPlaneConnector {
         transferStates.put(providerPid, "REQUESTED");
         monitor.debug("Local CUT: received TransferRequestMessage, providerPid=" + providerPid);
 
-        sendAsync(dataPlaneUrl + "/dataflows/start", buildStartMessage(providerPid, agreementId), "DataFlowStartMessage");
+        var message = Map.of(
+                "messageId", UUID.randomUUID().toString(),
+                "participantId", "local-participant",
+                "counterPartyId", "local-counterparty",
+                "dataspaceContext", "local-dataspace",
+                "processId", providerPid,
+                "agreementId", agreementId,
+                "datasetId", UUID.randomUUID().toString(),
+                "callbackAddress", Optional.ofNullable(dataPlaneBaseUrl.get()).orElse("local://callback"),
+                "transferType", "HttpData-PULL",
+                "claims", Map.of()
+        );
+
+        sendAsync(dataPlaneUrl + "/dataflows/start", serialize(message), "DataFlowStartMessage");
 
         return providerPid;
     }
@@ -188,7 +197,7 @@ public class LocalControlPlaneConnector {
                     "transferType", "HttpData-PULL",
                     "claims", Map.of()
             );
-            post(dataPlaneUrl + "/dataflows/prepare", MAPPER.writeValueAsString(message));
+            post(dataPlaneUrl + "/dataflows/prepare", serialize(message));
             monitor.debug("Local CUT: sent DataFlowPrepareMessage for processId=" + processId);
         } catch (IOException e) {
             throw new RuntimeException("Failed to send DataFlowPrepareMessage", e);
@@ -205,30 +214,18 @@ public class LocalControlPlaneConnector {
                     "agreementId", agreementId,
                     "format", "HttpData-PULL"
             );
-            post(dataPlaneUrl + "/transfers/request", MAPPER.writeValueAsString(message));
+            post(dataPlaneUrl + "/transfers/request", serialize(message));
             monitor.debug("Local CUT: sent TransferRequestMessage with consumerPid=" + consumerPid);
         } catch (IOException e) {
             throw new RuntimeException("Failed to send TransferRequestMessage", e);
         }
     }
 
-    private String buildStartMessage(String providerPid, String agreementId) {
+    private String serialize(Object object) {
         try {
-            var baseUrl = dataPlaneBaseUrl.get();
-            return MAPPER.writeValueAsString(Map.of(
-                    "messageId", UUID.randomUUID().toString(),
-                    "participantId", "local-participant",
-                    "counterPartyId", "local-counterparty",
-                    "dataspaceContext", "local-dataspace",
-                    "processId", providerPid,
-                    "agreementId", agreementId,
-                    "datasetId", UUID.randomUUID().toString(),
-                    "callbackAddress", baseUrl != null ? baseUrl : "local://callback",
-                    "transferType", "HttpData-PULL",
-                    "claims", Map.of()
-            ));
+            return MAPPER.writeValueAsString(object);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to build DataFlowStartMessage", e);
+            throw new RuntimeException("Failed to serialize object", e);
         }
     }
 
