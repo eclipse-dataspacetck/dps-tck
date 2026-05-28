@@ -2,6 +2,8 @@
 
 Technology Compatibility Kit for the Dataplane Signaling Protocol (DPS). This project verifies that a control plane implementation correctly implements the DPS specification by executing a suite of compliance tests against it.
 
+Specs: https://eclipse-dataplane-signaling.github.io/dataplane-signaling/v1.0-RC2
+
 ## Overview
 
 The DPS-TCK is part of the Eclipse Dataspace TCK project. It tests both consumer and provider control plane roles by orchestrating protocol message exchanges and validating that the system under test sends and receives the correct DPS messages with valid payloads.

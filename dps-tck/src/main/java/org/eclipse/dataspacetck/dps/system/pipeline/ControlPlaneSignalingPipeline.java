@@ -408,7 +408,5 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         }
     }
 
-    record DpsDeserializationResult(Map<String, Object> content, List<Error> validationErrors) {}
-
     record ReceivedDpsMessage(String path, DpsMessage type, Map<String, Object> content) {}
 }

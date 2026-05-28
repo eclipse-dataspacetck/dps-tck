@@ -34,6 +34,7 @@ public class DpsTckLocalTest {
                 .property(TCK_PREFIX + ".debug", "true")
                 .property(TCK_PREFIX + ".dps.local.connector", "true")
                 .addPackage("org.eclipse.dataspacetck.dps.verification.controlplane")
+                .addPackage("org.eclipse.dataspacetck.dps.verification.dataplane")
                 .build()
                 .execute();
 
