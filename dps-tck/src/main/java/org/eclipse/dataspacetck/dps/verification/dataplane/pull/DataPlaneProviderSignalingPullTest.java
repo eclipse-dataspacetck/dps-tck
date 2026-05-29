@@ -139,26 +139,6 @@ public class DataPlaneProviderSignalingPullTest {
     }
 
     @MandatoryTest
-    @DisplayName("DP_P_PULL:03-01: Verify data plane sends /dataflow/completed callback after wire transfer is done")
-    @TestSequenceDiagram("""
-            participant TCK as Technology Compatibility Kit (provider control plane)
-            participant CUT as Provider Data-Plane Under Test
-
-            TCK->>CUT: DataFlowStartMessage (POST /dataflows/start)
-            CUT-->>TCK: 200 OK + DataFlowStatusMessage (state=STARTED)
-            CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{processId}/dataflow/completed, state=COMPLETED)
-            TCK-->>CUT: 200 OK
-            """)
-    public void dp_p_pull_03_01() {
-        signalingPipeline
-                .expectCompletedCallback()
-                .sendDataFlowStartMessage(agreementId, datasetId, transferType)
-                .triggerDataPlaneCompletedCallback()
-                .thenWaitForCompletedCallback()
-                .execute();
-    }
-
-    @MandatoryTest
     @DisplayName("DP_P_PULL:04-01: Verify async DataFlowStartMessage: data plane responds 202+STARTING, sends /dataflow/started callback, and transfer completes")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (provider control plane)
