@@ -30,12 +30,12 @@ public class LocalDataPlaneClient implements DataPlaneClient {
 
     @Override
     public DataFlowResult prepare(boolean async, String callbackAddress, String processId, String agreementId, String datasetId, String transferType) {
-        return connector.handlePrepare(callbackAddress, processId, async);
+        return connector.handlePrepare(callbackAddress, processId, async, transferType);
     }
 
     @Override
     public DataFlowResult start(boolean async, String callbackAddress, String processId, String agreementId, String datasetId, String transferType) {
-        return connector.handleStart(callbackAddress, processId, async);
+        return connector.handleStart(callbackAddress, processId, async, transferType);
     }
 
     @Override
@@ -66,5 +66,10 @@ public class LocalDataPlaneClient implements DataPlaneClient {
     @Override
     public void sendCompletedCallback(String callbackAddress, String processId, String dataFlowId) {
         connector.sendCompletedCallback(callbackAddress, processId, dataFlowId);
+    }
+
+    @Override
+    public DataFlowStatusResponseMessage getStatus(String dataFlowId) {
+        return new DataFlowStatusResponseMessage(dataFlowId, connector.getState(dataFlowId));
     }
 }

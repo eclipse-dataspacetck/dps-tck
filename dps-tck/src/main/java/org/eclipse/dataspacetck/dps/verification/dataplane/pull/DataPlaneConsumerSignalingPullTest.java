@@ -12,7 +12,7 @@
  *
  */
 
-package org.eclipse.dataspacetck.dps.verification.dataplane;
+package org.eclipse.dataspacetck.dps.verification.dataplane.pull;
 
 import org.eclipse.dataspacetck.api.system.MandatoryTest;
 import org.eclipse.dataspacetck.api.system.TestSequenceDiagram;
@@ -27,16 +27,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import static java.util.UUID.randomUUID;
 
 /**
- * Verifies compliance of a consumer data plane with the Data Plane Signaling specification.
+ * Verifies compliance of a consumer data plane with the Data Plane Signaling specification for PULL flows.
  *
  * <p>The TCK acts as the <em>consumer control plane</em> (sending DPS messages to the CUT)
  * and validates that the consumer data plane under test handles them correctly and sends
  * proper callbacks.
  */
 @Tag("base-compliance")
-@DisplayName("DP_C: Data plane consumer signaling scenarios")
+@DisplayName("DP_C_PULL: Data plane consumer signaling pull flows")
 @ExtendWith(SystemBootstrapExtension.class)
-public class DataPlaneConsumerSignalingTest {
+public class DataPlaneConsumerSignalingPullTest {
 
     @Inject
     protected DataPlaneSignalingPipeline signalingPipeline;
@@ -47,29 +47,31 @@ public class DataPlaneConsumerSignalingTest {
     @ConfigParam
     protected String datasetId = randomUUID().toString();
 
+    @ConfigParam
+    protected String transferType = "http-pull";
+
     @MandatoryTest
-    @DisplayName("DP_C:01-01: Verify DataFlowPrepareMessage is handled and completed notification is accepted")
+    @DisplayName("DP_C_PULL:01-01: Verify DataFlowPrepareMessage is handled and started notification is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
             participant CUT as Consumer Data-Plane Under Test
 
             TCK->>CUT: DataFlowPrepareMessage (POST /dataflows/prepare)
-            CUT-->>TCK: 200 OK + DataFlowStatusMessage (state=PREPARED)
+            CUT-->>TCK: 200 OK + DataFlowStatusMessage (state=PREPARED) with null DataAddress
             TCK->>CUT: DataFlowStartedNotificationMessage (POST /dataflows/{id}/started)
             CUT-->>TCK: 200 OK
-            TCK->>CUT: Completed notification (POST /dataflows/{id}/completed)
-            CUT-->>TCK: 200 OK
             """)
-    public void dp_c_01_01() {
+    public void dp_c_pull_01_01() {
         signalingPipeline
-                .sendDataFlowPrepareMessage(agreementId, datasetId)
+                .sendDataFlowPrepareMessage(agreementId, datasetId, transferType)
+                .expectReceivedDataAddressToBeNull()
                 .sendDataFlowStartedNotification()
-                .sendDataFlowCompletedNotification()
+                .thenWaitForDataFlowToBeInState("STARTED")
                 .execute();
     }
 
     @MandatoryTest
-    @DisplayName("DP_C:01-02: Verify DataFlowPrepareMessage is handled and terminate notification is accepted")
+    @DisplayName("DP_C_PULL:01-02: Verify DataFlowPrepareMessage is handled and terminate message is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
             participant CUT as Consumer Data-Plane Under Test
@@ -81,16 +83,18 @@ public class DataPlaneConsumerSignalingTest {
             TCK->>CUT: DataFlowTerminateMessage (POST /dataflows/{id}/terminate)
             CUT-->>TCK: 200 OK
             """)
-    public void dp_c_01_02() {
+    public void dp_c_pull_01_02() {
         signalingPipeline
-                .sendDataFlowPrepareMessage(agreementId, datasetId)
+                .sendDataFlowPrepareMessage(agreementId, datasetId, transferType)
+                .expectReceivedDataAddressToBeNull()
                 .sendDataFlowStartedNotification()
                 .sendDataFlowTerminateMessage()
+                .thenWaitForDataFlowToBeInState("TERMINATED")
                 .execute();
     }
 
     @MandatoryTest
-    @DisplayName("DP_C:02-01: Verify DataFlowSuspendMessage and DataFlowResumeMessage are handled and completed notification is accepted")
+    @DisplayName("DP_C_PULL:02-01: Verify DataFlowSuspendMessage and DataFlowResumeMessage are handled and completed notification is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
             participant CUT as Consumer Data-Plane Under Test
@@ -103,21 +107,21 @@ public class DataPlaneConsumerSignalingTest {
             CUT-->>TCK: 200 OK
             TCK->>CUT: DataFlowResumeMessage (POST /dataflows/{id}/resume)
             CUT-->>TCK: 200 OK + DataFlowStatusMessage (state=STARTED)
-            TCK->>CUT: Completed notification (POST /dataflows/{id}/completed)
-            CUT-->>TCK: 200 OK
             """)
-    public void dp_c_02_01() {
+    public void dp_c_pull_02_01() {
         signalingPipeline
-                .sendDataFlowPrepareMessage(agreementId, datasetId)
+                .sendDataFlowPrepareMessage(agreementId, datasetId, transferType)
+                .expectReceivedDataAddressToBeNull()
                 .sendDataFlowStartedNotification()
                 .sendDataFlowSuspendMessage()
+                .thenWaitForDataFlowToBeInState("SUSPENDED")
                 .sendDataFlowResumeMessage()
-                .sendDataFlowCompletedNotification()
+                .thenWaitForDataFlowToBeInState("STARTED")
                 .execute();
     }
 
     @MandatoryTest
-    @DisplayName("DP_C:02-02: Verify DataFlowSuspendMessage is handled and terminate notification is accepted")
+    @DisplayName("DP_C_PULL:02-02: Verify DataFlowSuspendMessage is handled and terminate notification is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
             participant CUT as Consumer Data-Plane Under Test
@@ -131,40 +135,42 @@ public class DataPlaneConsumerSignalingTest {
             TCK->>CUT: DataFlowTerminateMessage (POST /dataflows/{id}/terminate)
             CUT-->>TCK: 200 OK
             """)
-    public void dp_c_02_02() {
+    public void dp_c_pull_02_02() {
         signalingPipeline
-                .sendDataFlowPrepareMessage(agreementId, datasetId)
+                .sendDataFlowPrepareMessage(agreementId, datasetId, transferType)
                 .sendDataFlowStartedNotification()
                 .sendDataFlowSuspendMessage()
+                .thenWaitForDataFlowToBeInState("SUSPENDED")
                 .sendDataFlowTerminateMessage()
+                .thenWaitForDataFlowToBeInState("TERMINATED")
                 .execute();
     }
 
     @MandatoryTest
-    @DisplayName("DP_C:03-01: Verify data plane sends /dataflow/completed callback after wire transfer is done")
+    @DisplayName("DP_C_PULL:03-01: Verify data plane sends /dataflow/completed callback after wire transfer is done")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
             participant CUT as Consumer Data-Plane Under Test
 
-            TCK->>CUT: DataFlowPrepareMessage (POST /dataflows/prepare)
-            CUT-->>TCK: 200 OK + DataFlowStatusMessage (state=PREPARED)
-            TCK->>CUT: DataFlowStartedNotificationMessage (POST /dataflows/{id}/started)
-            CUT-->>TCK: 200 OK
+            TCK->>CUT: DataFlowStartMessage (POST /dataflows/start)
+            CUT-->>TCK: 200 OK + DataFlowStatusMessage (state=STARTED)
             CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{processId}/dataflow/completed, state=COMPLETED)
             TCK-->>CUT: 200 OK
             """)
-    public void dp_c_03_01() {
+    public void dp_c_pull_03_01() {
         signalingPipeline
-                .expectCompletedCallback()
-                .sendDataFlowPrepareMessage(agreementId, datasetId)
+                .sendDataFlowPrepareMessage(agreementId, datasetId, transferType)
+                .thenWaitForDataFlowToBeInState("PREPARED")
                 .sendDataFlowStartedNotification()
+                .thenWaitForDataFlowToBeInState("STARTED")
+                .expectCompletedCallback()
                 .triggerDataPlaneCompletedCallback()
                 .thenWaitForCompletedCallback()
                 .execute();
     }
 
     @MandatoryTest
-    @DisplayName("DP_C:04-01: Verify async DataFlowPrepareMessage: data plane responds 202+PREPARING, sends /dataflow/prepared callback, and transfer completes")
+    @DisplayName("DP_C_PULL:04-01: Verify async DataFlowPrepareMessage: data plane responds 202+PREPARING, sends /dataflow/prepared callback, and transfer completes")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
             participant CUT as Consumer Data-Plane Under Test
@@ -172,19 +178,15 @@ public class DataPlaneConsumerSignalingTest {
             TCK->>CUT: DataFlowPrepareMessage (POST /dataflows/prepare)
             CUT-->>TCK: 202 Accepted + DataFlowStatusMessage (state=PREPARING)
             CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{processId}/dataflow/prepared, state=PREPARED)
-            TCK-->>CUT: 200 OK
-            TCK->>CUT: DataFlowStartedNotificationMessage (POST /dataflows/{id}/started)
-            CUT-->>TCK: 200 OK
-            TCK->>CUT: Completed notification (POST /dataflows/{id}/completed)
             CUT-->>TCK: 200 OK
             """)
-    public void dp_c_04_01() {
+    public void dp_c_pull_04_01() {
         signalingPipeline
                 .expectPreparedCallback()
-                .sendDataFlowPrepareMessageAsync(agreementId, datasetId)
+                .sendDataFlowPrepareMessageAsync(agreementId, datasetId, transferType)
+                .expectReceivedDataAddressToBeNull()
                 .thenWaitForPreparedCallback()
-                .sendDataFlowStartedNotification()
-                .sendDataFlowCompletedNotification()
+                .thenWaitForDataFlowToBeInState("PREPARED")
                 .execute();
     }
 }

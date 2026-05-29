@@ -28,11 +28,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowStatusMessage;
 
 /**
@@ -48,7 +50,7 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
 
     private final DataPlaneClient dataPlaneClient;
     private final AtomicReference<String> capturedProcessId = new AtomicReference<>();
-    private final AtomicReference<String> capturedDataFlowId = new AtomicReference<>();
+    private final AtomicReference<DataPlaneClient.DataFlowResult> capturedDataFlow = new AtomicReference<>();
     private final AtomicBoolean preparedCallbackReceived = new AtomicBoolean();
     private final AtomicBoolean startedCallbackReceived = new AtomicBoolean();
     private final AtomicBoolean completedCallbackReceived = new AtomicBoolean();
@@ -61,29 +63,29 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
         this.mapper = mapper;
     }
 
-    public DataPlaneSignalingPipeline sendDataFlowPrepareMessage(String agreementId, String datasetId) {
-        stages.add(() -> sendDataFlowPrepareMessage(false, agreementId, datasetId));
+    public DataPlaneSignalingPipeline sendDataFlowPrepareMessage(String agreementId, String datasetId, String transferType) {
+        stages.add(() -> sendDataFlowPrepareMessage(false, agreementId, datasetId, transferType));
         return this;
     }
 
-    public DataPlaneSignalingPipeline sendDataFlowPrepareMessageAsync(String agreementId, String datasetId) {
-        stages.add(() -> sendDataFlowPrepareMessage(true, agreementId, datasetId));
+    public DataPlaneSignalingPipeline sendDataFlowPrepareMessageAsync(String agreementId, String datasetId, String transferType) {
+        stages.add(() -> sendDataFlowPrepareMessage(true, agreementId, datasetId, transferType));
         return this;
     }
 
-    public DataPlaneSignalingPipeline sendDataFlowStartMessage(String agreementId, String datasetId) {
-        stages.add(() -> sendDataFlowStartMessage(false, agreementId, datasetId));
+    public DataPlaneSignalingPipeline sendDataFlowStartMessage(String agreementId, String datasetId, String transferType) {
+        stages.add(() -> sendDataFlowStartMessage(false, agreementId, datasetId, transferType));
         return this;
     }
 
-    public DataPlaneSignalingPipeline sendDataFlowStartMessageAsync(String agreementId, String datasetId) {
-        stages.add(() -> sendDataFlowStartMessage(true, agreementId, datasetId));
+    public DataPlaneSignalingPipeline sendDataFlowStartMessageAsync(String agreementId, String datasetId, String transferType) {
+        stages.add(() -> sendDataFlowStartMessage(true, agreementId, datasetId, transferType));
         return this;
     }
 
     public DataPlaneSignalingPipeline sendDataFlowStartedNotification() {
         stages.add(() -> {
-            var dataFlowId = capturedDataFlowId.get();
+            var dataFlowId = capturedDataFlow.get().dataFlowId();
             monitor.debug("TCK CP: sending started notification for dataFlowId=" + dataFlowId);
             dataPlaneClient.sendStarted(dataFlowId);
         });
@@ -92,7 +94,7 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
 
     public DataPlaneSignalingPipeline sendDataFlowSuspendMessage() {
         stages.add(() -> {
-            var dataFlowId = capturedDataFlowId.get();
+            var dataFlowId = capturedDataFlow.get().dataFlowId();
             monitor.debug("TCK CP: sending DataFlowSuspendMessage for dataFlowId=" + dataFlowId);
             dataPlaneClient.sendSuspend(dataFlowId);
         });
@@ -101,7 +103,7 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
 
     public DataPlaneSignalingPipeline sendDataFlowResumeMessage() {
         stages.add(() -> {
-            var dataFlowId = capturedDataFlowId.get();
+            var dataFlowId = capturedDataFlow.get().dataFlowId();
             monitor.debug("TCK CP: sending DataFlowResumeMessage for dataFlowId=" + dataFlowId);
             var result = dataPlaneClient.resume(dataFlowId);
             if (result == null) {
@@ -116,7 +118,7 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
 
     public DataPlaneSignalingPipeline sendDataFlowTerminateMessage() {
         stages.add(() -> {
-            var dataFlowId = capturedDataFlowId.get();
+            var dataFlowId = capturedDataFlow.get().dataFlowId();
             monitor.debug("TCK CP: sending DataFlowTerminateMessage for dataFlowId=" + dataFlowId);
             dataPlaneClient.sendTerminate(dataFlowId);
         });
@@ -125,7 +127,7 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
 
     public DataPlaneSignalingPipeline sendDataFlowCompletedNotification() {
         stages.add(() -> {
-            var dataFlowId = capturedDataFlowId.get();
+            var dataFlowId = capturedDataFlow.get().dataFlowId();
             monitor.debug("TCK CP: sending completed notification for dataFlowId=" + dataFlowId);
             dataPlaneClient.sendCompleted(dataFlowId);
         });
@@ -134,7 +136,7 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
 
     public DataPlaneSignalingPipeline triggerDataPlaneCompletedCallback() {
         stages.add(() -> {
-            var dataFlowId = capturedDataFlowId.get();
+            var dataFlowId = capturedDataFlow.get().dataFlowId();
             var processId = capturedProcessId.get();
             monitor.debug("TCK CP: triggering data plane completed callback for dataFlowId=" + dataFlowId);
             dataPlaneClient.sendCompletedCallback(endpoint.getAddress(), processId, dataFlowId);
@@ -169,11 +171,11 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
         return thenWait("COMPLETED callback from data plane", completedCallbackReceived::get);
     }
 
-    private void sendDataFlowPrepareMessage(boolean async, String agreementId, String datasetId) {
+    private void sendDataFlowPrepareMessage(boolean async, String agreementId, String datasetId, String transferType) {
         var processId = UUID.randomUUID().toString();
         capturedProcessId.set(processId);
         monitor.debug("TCK CP: sending DataFlowPrepareMessage for processId=" + processId);
-        var result = dataPlaneClient.prepare(async, endpoint.getAddress(), processId, agreementId, datasetId, "HttpData-PULL");
+        var result = dataPlaneClient.prepare(async, endpoint.getAddress(), processId, agreementId, datasetId, transferType);
         if (result == null || result.dataFlowId() == null) {
             throw new RuntimeException("DataFlowPrepareMessage response missing dataFlowId");
         }
@@ -181,15 +183,15 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
         if (!expectedState.equals(result.state())) {
             throw new RuntimeException("Expected state %s but got: %s".formatted(expectedState, result.state()));
         }
-        capturedDataFlowId.set(result.dataFlowId());
+        capturedDataFlow.set(result);
         monitor.debug("TCK CP: DataFlowPrepareMessage response: dataFlowId=" + result.dataFlowId() + ", state=" + result.state());
     }
 
-    private void sendDataFlowStartMessage(boolean async, String agreementId, String datasetId) {
+    private void sendDataFlowStartMessage(boolean async, String agreementId, String datasetId, String transferType) {
         var processId = UUID.randomUUID().toString();
         capturedProcessId.set(processId);
         monitor.debug("TCK CP: sending DataFlowStartMessage for processId=" + processId);
-        var result = dataPlaneClient.start(async, endpoint.getAddress(), processId, agreementId, datasetId, "HttpData-PULL");
+        var result = dataPlaneClient.start(async, endpoint.getAddress(), processId, agreementId, datasetId, transferType);
         if (result == null || result.dataFlowId() == null) {
             throw new RuntimeException("DataFlowStartMessage response missing dataFlowId");
         }
@@ -197,7 +199,7 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
         if (!expectedState.equals(result.state())) {
             throw new RuntimeException("Expected state %s but got: %s".formatted(expectedState, result.state()));
         }
-        capturedDataFlowId.set(result.dataFlowId());
+        capturedDataFlow.set(result);
         monitor.debug("TCK CP: DataFlowStartMessage response: dataFlowId=" + result.dataFlowId() + ", state=" + result.state());
     }
 
@@ -211,6 +213,7 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
                         return badRequest(result.validationErrors());
                     }
                     monitor.debug("Received callback at path pattern " + pathPattern + ". Content: " + result.content());
+
                     receivedFlag.set(true);
                     endpoint.deregisterHandler(pathPattern);
                     latch.countDown();
@@ -242,4 +245,29 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
         }
     }
 
+    public DataPlaneSignalingPipeline expectReceivedDataAddressToBeNull() {
+        then(() -> {
+            monitor.debug("TCK CP: expecting received data address to be null");
+            assertThat(capturedDataFlow.get().dataAddress()).isNull();
+        });
+        return this;
+    }
+
+    public DataPlaneSignalingPipeline expectReceivedDataAddressToBeNonNull() {
+        then(() -> {
+            monitor.debug("TCK CP: expecting received data address to be null");
+            assertThat(capturedDataFlow.get().dataAddress()).isNotNull();
+        });
+        return this;
+    }
+
+    public DataPlaneSignalingPipeline thenWaitForDataFlowToBeInState(String state) {
+        thenWait("data flow to be in state " + state, () -> {
+            var id = capturedDataFlow.get().dataFlowId();
+            var actualState = dataPlaneClient.getStatus(id).state();
+            monitor.debug("TCK. CP: expecting DataFlow %s state to be %s. Actual state: %s".formatted(id, state, actualState));
+            return Objects.equals(actualState, state);
+        });
+        return this;
+    }
 }

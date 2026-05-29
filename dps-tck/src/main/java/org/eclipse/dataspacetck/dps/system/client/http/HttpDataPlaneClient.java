@@ -152,6 +152,26 @@ public class HttpDataPlaneClient implements DataPlaneClient {
         // the real data plane sends this callback autonomously; nothing to trigger over HTTP
     }
 
+    @Override
+    public DataFlowStatusResponseMessage getStatus(String dataFlowId) {
+        var url = dataPlaneUrl + "/dataflows/" + dataFlowId + "/status";
+
+        var request = new Request.Builder()
+                .get()
+                .url(url)
+                .build();
+
+        try (var response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new RuntimeException("HTTP " + response.code() + " from " + url);
+            }
+            var body = response.body().string();
+            return mapper.readValue(body, DataFlowStatusResponseMessage.class);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to get data flow status", e);
+        }
+    }
+
     private String post(String url, String body) throws IOException {
         var request = new Request.Builder()
                 .url(url)
@@ -170,6 +190,7 @@ public class HttpDataPlaneClient implements DataPlaneClient {
         var responseMap = mapper.readValue(responseBody, Map.class);
         var dataFlowId = (String) responseMap.get("dataFlowId");
         var state = (String) responseMap.get("state");
-        return new DataFlowResult(dataFlowId, state);
+        var dataAddress = (Map<String, Object>) responseMap.get("dataAddress");
+        return new DataFlowResult(dataFlowId, state, dataAddress);
     }
 }

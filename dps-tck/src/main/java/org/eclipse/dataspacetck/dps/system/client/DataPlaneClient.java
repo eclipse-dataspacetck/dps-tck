@@ -14,6 +14,8 @@
 
 package org.eclipse.dataspacetck.dps.system.client;
 
+import java.util.Map;
+
 /**
  * Client for sending DPS messages to the data plane under test.
  */
@@ -35,5 +37,10 @@ public interface DataPlaneClient {
 
     void sendCompletedCallback(String callbackAddress, String processId, String dataFlowId);
 
-    record DataFlowResult(String dataFlowId, String state) {}
+    DataFlowStatusResponseMessage getStatus(String dataFlowId);
+
+    record DataFlowResult(String dataFlowId, String state, Map<String, Object> dataAddress) {}
+
+    record DataFlowStatusResponseMessage(String dataFlowId, String state) {
+    }
 }

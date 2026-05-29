@@ -25,6 +25,7 @@ import org.eclipse.dataspacetck.dps.system.client.DataPlaneClient.DataFlowResult
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -49,35 +50,47 @@ public class LocalDataPlaneConnector {
         this.monitor = monitor;
     }
 
-    public DataFlowResult handlePrepare(String callbackAddress, String processId, boolean async) {
+    public DataFlowResult handlePrepare(String callbackAddress, String processId, boolean async, String transferType) {
         var dataFlowId = UUID.randomUUID().toString();
         if (async) {
             dataFlowStates.put(dataFlowId, "PREPARING");
             monitor.debug("Local DP: handling async prepare for processId=" + processId + ", dataFlowId=" + dataFlowId);
-            sendAsync(callbackAddress + "/transfers/" + processId + "/dataflow/prepared",
-                    serialize(Map.of("messageId", UUID.randomUUID().toString(), "dataFlowId", dataFlowId, "state", "PREPARED")),
-                    "DataFlowStatusMessage (PREPARED) callback");
-            return new DataFlowResult(dataFlowId, "PREPARING");
+            var url = callbackAddress + "/transfers/" + processId + "/dataflow/prepared";
+            var message = serialize(Map.of("messageId", UUID.randomUUID().toString(), "dataFlowId", dataFlowId, "state", "PREPARED"));
+            var description = "DataFlowStatusMessage (PREPARED) callback";
+            sendAsync(url, message, description).whenComplete((c, t) -> {
+                if (t == null) {
+                    dataFlowStates.put(dataFlowId, "PREPARED");
+                }
+            });
+            return new DataFlowResult(dataFlowId, "PREPARING", null);
         } else {
             dataFlowStates.put(dataFlowId, "PREPARED");
             monitor.debug("Local DP: handling sync prepare for processId=" + processId + ", dataFlowId=" + dataFlowId);
-            return new DataFlowResult(dataFlowId, "PREPARED");
+            Map<String, Object> dataAddress = transferType.endsWith("-push") ? Map.of("key", "value") : null;
+            return new DataFlowResult(dataFlowId, "PREPARED", dataAddress);
         }
     }
 
-    public DataFlowResult handleStart(String callbackAddress, String processId, boolean asyncMode) {
+    public DataFlowResult handleStart(String callbackAddress, String processId, boolean asyncMode, String transferType) {
         var dataFlowId = UUID.randomUUID().toString();
         if (asyncMode) {
             dataFlowStates.put(dataFlowId, "STARTING");
             monitor.debug("Local DP: handling async start for processId=" + processId + ", dataFlowId=" + dataFlowId);
-            sendAsync(callbackAddress + "/transfers/" + processId + "/dataflow/started",
-                    serialize(Map.of("messageId", UUID.randomUUID().toString(), "dataFlowId", dataFlowId, "state", "STARTED")),
-                    "DataFlowStatusMessage (STARTED) callback");
-            return new DataFlowResult(dataFlowId, "STARTING");
+            var url = callbackAddress + "/transfers/" + processId + "/dataflow/started";
+            var message = serialize(Map.of("messageId", UUID.randomUUID().toString(), "dataFlowId", dataFlowId, "state", "STARTED"));
+            var description = "DataFlowStatusMessage (STARTED) callback";
+            sendAsync(url, message, description).whenComplete((c, t) -> {
+                if (t == null) {
+                    dataFlowStates.put(dataFlowId, "STARTED");
+                }
+            });
+            return new DataFlowResult(dataFlowId, "STARTING", null);
         } else {
             dataFlowStates.put(dataFlowId, "STARTED");
             monitor.debug("Local DP: handling sync start for processId=" + processId + ", dataFlowId=" + dataFlowId);
-            return new DataFlowResult(dataFlowId, "STARTED");
+            Map<String, Object> dataAddress = transferType.endsWith("-pull") ? Map.of("key", "value") : null;
+            return new DataFlowResult(dataFlowId, "STARTED", dataAddress);
         }
     }
 
@@ -94,7 +107,7 @@ public class LocalDataPlaneConnector {
     public DataFlowResult handleResume(String dataFlowId) {
         monitor.debug("Local DP: received resume for dataFlowId=" + dataFlowId);
         dataFlowStates.put(dataFlowId, "STARTED");
-        return new DataFlowResult(dataFlowId, "STARTED");
+        return new DataFlowResult(dataFlowId, "STARTED", null);
     }
 
     public void handleTerminate(String dataFlowId) {
@@ -126,8 +139,8 @@ public class LocalDataPlaneConnector {
         }
     }
 
-    private void sendAsync(String url, String body, String description) {
-        executor.submit(() -> {
+    private CompletableFuture<Void> sendAsync(String url, String body, String description) {
+        return CompletableFuture.supplyAsync(() -> {
             var request = new Request.Builder()
                     .url(url)
                     .post(RequestBody.create(body, JSON))
@@ -138,10 +151,12 @@ public class LocalDataPlaneConnector {
                     throw new RuntimeException("HTTP " + response.code() + " from " + url + ". Body: " + response.body().string());
                 }
                 monitor.debug("Local DP: sent " + description + " to " + url);
+                return null;
             } catch (IOException e) {
                 monitor.enableError().message("Local DP: failed to send " + description + ": " + e.getMessage());
+                throw new RuntimeException(e);
             }
-        });
+        }, executor);
     }
 
 }
