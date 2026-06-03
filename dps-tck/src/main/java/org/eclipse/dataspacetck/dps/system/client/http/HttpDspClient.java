@@ -31,22 +31,23 @@ import java.util.UUID;
 public class HttpDspClient implements DspClient {
 
     private static final MediaType JSON = MediaType.get("application/json");
-    private final String protocolUrl;
+    private final String initialDspUrl;
     private final Monitor monitor;
     private final OkHttpClient httpClient;
     private final ObjectMapper mapper;
 
     public HttpDspClient(String protocolUrl, Monitor monitor, ObjectMapper mapper) {
-        this.protocolUrl = protocolUrl;
+        this.initialDspUrl = protocolUrl;
         this.monitor = monitor;
         this.mapper = mapper;
         this.httpClient = new OkHttpClient();
     }
 
     @Override
-    public String dspTransferState(String processId) {
+    public String dspTransferState(String callbackAddress, String processId) {
         try {
-            var url = protocolUrl + "/transfers/" + processId;
+            var address = callbackAddress == null ? this.initialDspUrl : callbackAddress;
+            var url = address + "/transfers/" + processId;
 
             var authentication = Map.of("clientId", "providerId");
             var request = new Request.Builder()
@@ -62,27 +63,31 @@ public class HttpDspClient implements DspClient {
     }
 
     @Override
-    public void sendTransferStartMessage(String processId) {
+    public void sendTransferStartMessage(String callbackAddress, String processId) {
+        var address = callbackAddress == null ? this.initialDspUrl : callbackAddress;
         var requestBody = message(processId, "TransferStartMessage");
-        send(protocolUrl + "/transfers/" + processId + "/start", requestBody, "providerId");
+        send(address + "/transfers/" + processId + "/start", requestBody, "providerId");
     }
 
     @Override
-    public void sendTransferCompletionMessage(String processId) {
+    public void sendTransferCompletionMessage(String callbackAddress, String processId) {
+        var address = callbackAddress == null ? this.initialDspUrl : callbackAddress;
         var requestBody = message(processId, "TransferCompletionMessage");
-        send(protocolUrl + "/transfers/" + processId + "/completion", requestBody, "providerId");
+        send(address + "/transfers/" + processId + "/completion", requestBody, "providerId");
     }
 
     @Override
-    public void sendTransferTerminationMessage(String processId) {
+    public void sendTransferTerminationMessage(String callbackAddress, String processId) {
+        var address = callbackAddress == null ? this.initialDspUrl : callbackAddress;
         var requestBody = message(processId, "TransferTerminationMessage");
-        send(protocolUrl + "/transfers/" + processId + "/termination", requestBody, "providerId");
+        send(address + "/transfers/" + processId + "/termination", requestBody, "providerId");
     }
 
     @Override
-    public void sendTransferSuspensionMessage(String processId) {
+    public void sendTransferSuspensionMessage(String callbackAddress, String processId) {
+        var address = callbackAddress == null ? this.initialDspUrl : callbackAddress;
         var requestBody = message(processId, "TransferSuspensionMessage");
-        send(protocolUrl + "/transfers/" + processId + "/suspension", requestBody, "providerId");
+        send(address + "/transfers/" + processId + "/suspension", requestBody, "providerId");
     }
 
     @Override
@@ -95,7 +100,7 @@ public class HttpDspClient implements DspClient {
                 "agreementId", agreementId,
                 "format", transferType
         );
-        var response = send(protocolUrl + "/transfers/request", requestBody, "consumerId");
+        var response = send(initialDspUrl + "/transfers/request", requestBody, "providerId");
         return response.get("providerPid").toString();
     }
 
