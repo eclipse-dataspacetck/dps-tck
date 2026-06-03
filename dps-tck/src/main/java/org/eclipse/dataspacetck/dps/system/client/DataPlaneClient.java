@@ -25,6 +25,8 @@ public interface DataPlaneClient {
 
     DataFlowResult start(boolean async, String callbackAddress, String processId, String agreementId, String datasetId, String transferType);
 
+    DataFlowResult startWithDataAddress(boolean async, String callbackAddress, String processId, String agreementId, String datasetId, String transferType, Map<String, Object> dataAddress);
+
     void sendStarted(String dataFlowId);
 
     void sendSuspend(String dataFlowId);

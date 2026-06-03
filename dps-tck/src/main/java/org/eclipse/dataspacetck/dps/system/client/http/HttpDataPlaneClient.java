@@ -35,12 +35,14 @@ public class HttpDataPlaneClient implements DataPlaneClient {
 
     private final String dataPlaneUrl;
     private final Monitor monitor;
+    private final String dataPlaneAuthorization;
     private final OkHttpClient httpClient;
     private final ObjectMapper mapper;
 
-    public HttpDataPlaneClient(String dataPlaneUrl, Monitor monitor, ObjectMapper mapper) {
+    public HttpDataPlaneClient(String dataPlaneUrl, Monitor monitor, ObjectMapper mapper, String dataPlaneAuthorization) {
         this.dataPlaneUrl = dataPlaneUrl;
         this.monitor = monitor;
+        this.dataPlaneAuthorization = dataPlaneAuthorization;
         this.httpClient = new OkHttpClient();
         this.mapper = mapper;
     }
@@ -92,6 +94,30 @@ public class HttpDataPlaneClient implements DataPlaneClient {
     }
 
     @Override
+    public DataFlowResult startWithDataAddress(boolean async, String callbackAddress, String processId, String agreementId, String datasetId, String transferType, Map<String, Object> dataAddress) {
+        try {
+            var messageFields = new java.util.HashMap<String, Object>();
+            messageFields.put("messageId", UUID.randomUUID().toString());
+            messageFields.put("participantId", "tck-participant");
+            messageFields.put("counterPartyId", "tck-counterparty");
+            messageFields.put("dataspaceContext", "tck-dataspace");
+            messageFields.put("processId", processId);
+            messageFields.put("agreementId", agreementId);
+            messageFields.put("datasetId", datasetId);
+            messageFields.put("callbackAddress", callbackAddress);
+            messageFields.put("transferType", transferType);
+            messageFields.put("claims", Map.of());
+            messageFields.put("dataAddress", dataAddress);
+            var body = mapper.writeValueAsString(messageFields);
+            monitor.debug("HTTP DP: sending DataFlowStartMessage (with DataAddress) for processId=" + processId);
+            var response = post(dataPlaneUrl + "/dataflows/start", body);
+            return parseDataFlowResult(response);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to send DataFlowStartMessage with DataAddress", e);
+        }
+    }
+
+    @Override
     public void sendStarted(String dataFlowId) {
         try {
             var body = mapper.writeValueAsString(Map.of("messageId", UUID.randomUUID().toString()));
@@ -128,7 +154,7 @@ public class HttpDataPlaneClient implements DataPlaneClient {
     @Override
     public void sendTerminate(String dataFlowId) {
         try {
-            var body = mapper.writeValueAsString(Map.of("messageId", UUID.randomUUID().toString()));
+            var body = mapper.writeValueAsString(Map.of("messageId", UUID.randomUUID().toString(), "reason", "any"));
             monitor.debug("HTTP DP: sending terminate for dataFlowId=" + dataFlowId);
             post(dataPlaneUrl + "/dataflows/" + dataFlowId + "/terminate", body);
         } catch (IOException e) {
@@ -157,16 +183,17 @@ public class HttpDataPlaneClient implements DataPlaneClient {
         var url = dataPlaneUrl + "/dataflows/" + dataFlowId + "/status";
 
         var request = new Request.Builder()
+                .header("Authorization", dataPlaneAuthorization)
                 .get()
                 .url(url)
                 .build();
 
         try (var response = httpClient.newCall(request).execute()) {
+            var responseBody = response.body().string();
             if (!response.isSuccessful()) {
-                throw new RuntimeException("HTTP " + response.code() + " from " + url);
+                throw new RuntimeException("HTTP " + response.code() + " from " + url + ". Body: " + responseBody);
             }
-            var body = response.body().string();
-            return mapper.readValue(body, DataFlowStatusResponseMessage.class);
+            return mapper.readValue(responseBody, DataFlowStatusResponseMessage.class);
         } catch (IOException e) {
             throw new RuntimeException("Failed to get data flow status", e);
         }
@@ -175,13 +202,15 @@ public class HttpDataPlaneClient implements DataPlaneClient {
     private String post(String url, String body) throws IOException {
         var request = new Request.Builder()
                 .url(url)
+                .header("Authorization", dataPlaneAuthorization)
                 .post(RequestBody.create(body, JSON))
                 .build();
         try (var response = httpClient.newCall(request).execute()) {
+            var responseBody = response.body().string();
             if (!response.isSuccessful()) {
-                throw new RuntimeException("HTTP " + response.code() + " from " + url);
+                throw new RuntimeException("HTTP " + response.code() + " from " + url + ". Body: " + responseBody);
             }
-            return response.body().string();
+            return responseBody;
         }
     }
 

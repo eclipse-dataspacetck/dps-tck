@@ -17,6 +17,8 @@ package org.eclipse.dataspacetck.dps.system.client.local;
 import org.eclipse.dataspacetck.dps.system.client.DataPlaneClient;
 import org.eclipse.dataspacetck.dps.system.connector.LocalDataPlaneConnector;
 
+import java.util.Map;
+
 /**
  * In-process implementation of {@link DataPlaneClient} backed by a {@link LocalDataPlaneConnector}.
  */
@@ -35,6 +37,11 @@ public class LocalDataPlaneClient implements DataPlaneClient {
 
     @Override
     public DataFlowResult start(boolean async, String callbackAddress, String processId, String agreementId, String datasetId, String transferType) {
+        return connector.handleStart(callbackAddress, processId, async, transferType);
+    }
+
+    @Override
+    public DataFlowResult startWithDataAddress(boolean async, String callbackAddress, String processId, String agreementId, String datasetId, String transferType, Map<String, Object> dataAddress) {
         return connector.handleStart(callbackAddress, processId, async, transferType);
     }
 
