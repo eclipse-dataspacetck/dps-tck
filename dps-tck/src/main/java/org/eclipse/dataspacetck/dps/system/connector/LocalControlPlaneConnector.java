@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -48,6 +50,7 @@ public class LocalControlPlaneConnector {
     private final AtomicReference<String> dataPlaneBaseUrl = new AtomicReference<>();
     private final AtomicReference<String> pendingPrepareAgreementId = new AtomicReference<>();
     private final OkHttpClient httpClient = new OkHttpClient();
+    private final ExecutorService executor = Executors.newCachedThreadPool();
     private final Monitor monitor;
 
     public LocalControlPlaneConnector(Monitor monitor) {
@@ -230,7 +233,7 @@ public class LocalControlPlaneConnector {
     }
 
     private void sendAsync(String url, String body, String description) {
-        var t = new Thread(() -> {
+        executor.submit(() -> {
             try {
                 post(url, body);
                 monitor.debug("Local CUT: sent " + description + " to " + url);
@@ -238,8 +241,6 @@ public class LocalControlPlaneConnector {
                 monitor.enableError().message("Local CUT: failed to send " + description + ": " + e.getMessage());
             }
         });
-        t.setDaemon(true);
-        t.start();
     }
 
     private void post(String url, String body) throws IOException {

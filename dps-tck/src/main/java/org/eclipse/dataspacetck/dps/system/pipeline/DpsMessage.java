@@ -25,7 +25,8 @@ public enum DpsMessage {
     DataFlowStartedNotificationMessage,
     DataFlowTerminateMessage,
     DataFlowSuspendMessage,
-    DataFlowResumeMessage;
+    DataFlowResumeMessage,
+    DataFlowStatusMessage;
 
     public static final String DSPACE_SIG_NAMESPACE = "https://w3id.org/dspace-sig/v1.0";
 
