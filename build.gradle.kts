@@ -19,15 +19,7 @@ plugins {
     `maven-publish`
     signing
     checkstyle
-    alias(libs.plugins.tck.build)
-}
-
-buildscript {
-    dependencies {
-        val version: String by project
-        classpath("org.eclipse.dataspacetck.build.tck-build:org.eclipse.dataspacetck.build.tck-build.gradle.plugin:$version")
-        classpath("org.eclipse.dataspacetck.build.tck-generator:org.eclipse.dataspacetck.build.tck-generator.gradle.plugin:$version")
-    }
+    alias(libs.plugins.tck.build) apply false
 }
 
 allprojects {
