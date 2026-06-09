@@ -67,7 +67,7 @@ public class DpsSystemLauncher implements SystemLauncher {
             controlPlaneWebhookUrl = configuration.getPropertyAsString(CONTROL_PLANE_WEBHOOK_URL_CONFIG, null);
             controlPlaneProtocolUrl = configuration.getPropertyAsString(CONTROL_PLANE_PROTOCOL_URL_CONFIG, null);
             dataPlaneUrl = configuration.getPropertyAsString(DATA_PLANE_URL_CONFIG, null);
-            dataPlaneAuthorization = configuration.getPropertyAsString(DATA_PLANE_AUTHORIZATION_CONFIG, null);
+            dataPlaneAuthorization = configuration.getPropertyAsString(DATA_PLANE_AUTHORIZATION_CONFIG, "dummy-authorization");
         }
     }
 
@@ -113,9 +113,6 @@ public class DpsSystemLauncher implements SystemLauncher {
     protected @NonNull DataPlaneSignalingPipeline httpDataPlanePipeline(CallbackEndpoint callbackEndpoint) {
         if (dataPlaneUrl == null) {
             throw new RuntimeException("Required configuration not set: " + DATA_PLANE_URL_CONFIG);
-        }
-        if (dataPlaneAuthorization == null) {
-            throw new RuntimeException("Required configuration not set: " + DATA_PLANE_AUTHORIZATION_CONFIG);
         }
         var dataPlaneClient = new HttpDataPlaneClient(dataPlaneUrl, monitor, mapper, dataPlaneAuthorization);
         return new DataPlaneSignalingPipeline(dataPlaneClient, callbackEndpoint, monitor, waitTime, mapper);
