@@ -83,6 +83,16 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
         return this;
     }
 
+    public DataPlaneSignalingPipeline sendDataFlowStartMessageWithDataAddress(String agreementId, String datasetId, String transferType) {
+        stages.add(() -> sendDataFlowStartMessageWithDataAddress(false, agreementId, datasetId, transferType));
+        return this;
+    }
+
+    public DataPlaneSignalingPipeline sendDataFlowStartMessageWithDataAddressAsync(String agreementId, String datasetId, String transferType) {
+        stages.add(() -> sendDataFlowStartMessageWithDataAddress(true, agreementId, datasetId, transferType));
+        return this;
+    }
+
     public DataPlaneSignalingPipeline sendDataFlowStartedNotification() {
         stages.add(() -> {
             var dataFlowId = capturedDataFlow.get().dataFlowId();
@@ -201,6 +211,23 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
         }
         capturedDataFlow.set(result);
         monitor.debug("TCK CP: DataFlowStartMessage response: dataFlowId=" + result.dataFlowId() + ", state=" + result.state());
+    }
+
+    private void sendDataFlowStartMessageWithDataAddress(boolean async, String agreementId, String datasetId, String transferType) {
+        var processId = UUID.randomUUID().toString();
+        capturedProcessId.set(processId);
+        monitor.debug("TCK CP: sending DataFlowStartMessage (with DataAddress) for processId=" + processId);
+        Map<String, Object> dataAddress = Map.of("endpointType", "https://w3id.org/idsa/v4.1/HTTP", "endpoint", endpoint.getAddress());
+        var result = dataPlaneClient.startWithDataAddress(async, endpoint.getAddress(), processId, agreementId, datasetId, transferType, dataAddress);
+        if (result == null || result.dataFlowId() == null) {
+            throw new RuntimeException("DataFlowStartMessage response missing dataFlowId");
+        }
+        var expectedState = async ? "STARTING" : "STARTED";
+        if (!expectedState.equals(result.state())) {
+            throw new RuntimeException("Expected state %s but got: %s".formatted(expectedState, result.state()));
+        }
+        capturedDataFlow.set(result);
+        monitor.debug("TCK CP: DataFlowStartMessage (with DataAddress) response: dataFlowId=" + result.dataFlowId() + ", state=" + result.state());
     }
 
     private void registerCallbackHandler(String pathPattern, AtomicBoolean receivedFlag) {

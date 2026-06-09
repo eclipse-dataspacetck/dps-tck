@@ -45,12 +45,14 @@ public class DpsSystemLauncher implements SystemLauncher {
     private static final String CONTROL_PLANE_WEBHOOK_URL_CONFIG = TCK_PREFIX + ".dps.controlplane.webhook.url";
     private static final String CONTROL_PLANE_PROTOCOL_URL_CONFIG = TCK_PREFIX + ".dps.controlplane.protocol.url";
     private static final String DATA_PLANE_URL_CONFIG = TCK_PREFIX + ".dps.dataplane.url";
+    private static final String DATA_PLANE_AUTHORIZATION_CONFIG = TCK_PREFIX + ".dps.dataplane.authorization";
     private static final int DEFAULT_WAIT_SECONDS = 15;
     private static final String DEFAULT_WAIT_CONFIG = TCK_PREFIX + ".dps.default.wait";
 
     private String controlPlaneWebhookUrl;
     private String controlPlaneProtocolUrl;
     private String dataPlaneUrl;
+    private String dataPlaneAuthorization;
     private long waitTime = DEFAULT_WAIT_SECONDS;
     private boolean useLocalConnector;
     private Monitor monitor;
@@ -65,6 +67,7 @@ public class DpsSystemLauncher implements SystemLauncher {
             controlPlaneWebhookUrl = configuration.getPropertyAsString(CONTROL_PLANE_WEBHOOK_URL_CONFIG, null);
             controlPlaneProtocolUrl = configuration.getPropertyAsString(CONTROL_PLANE_PROTOCOL_URL_CONFIG, null);
             dataPlaneUrl = configuration.getPropertyAsString(DATA_PLANE_URL_CONFIG, null);
+            dataPlaneAuthorization = configuration.getPropertyAsString(DATA_PLANE_AUTHORIZATION_CONFIG, "dummy-authorization");
         }
     }
 
@@ -111,7 +114,7 @@ public class DpsSystemLauncher implements SystemLauncher {
         if (dataPlaneUrl == null) {
             throw new RuntimeException("Required configuration not set: " + DATA_PLANE_URL_CONFIG);
         }
-        var dataPlaneClient = new HttpDataPlaneClient(dataPlaneUrl, monitor, mapper);
+        var dataPlaneClient = new HttpDataPlaneClient(dataPlaneUrl, monitor, mapper, dataPlaneAuthorization);
         return new DataPlaneSignalingPipeline(dataPlaneClient, callbackEndpoint, monitor, waitTime, mapper);
     }
 
