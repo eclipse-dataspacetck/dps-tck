@@ -55,7 +55,7 @@ public class DataPlaneProviderSignalingPushTest {
     protected String transferType = "http-push";
 
     @MandatoryTest
-    @DisplayName("DP_P_PUSH:01-01: Verify DataFlowStartMessage with DataAddress is handled and started callback is accepted")
+    @DisplayName("DP_P_PUSH:01-01: Verify DataFlowStartMessage with DataAddress is handled")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (provider control plane)
             participant CUT as Provider Data-Plane Under Test
