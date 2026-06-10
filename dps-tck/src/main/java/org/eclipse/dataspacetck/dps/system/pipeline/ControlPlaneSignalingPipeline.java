@@ -228,8 +228,8 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
     public ControlPlaneSignalingPipeline sendTransferRequestMessage(String agreementId, String transferType) {
         stages.add(() -> {
             monitor.debug("Send DSP TransferRequestMessage");
-            var id = dspClient.sendTransferRequestMessage(endpoint.getAddress(), agreementId, transferType);
-            lastCounterParty.set(new CounterParty(id, null));
+            var requestResult = dspClient.sendTransferRequestMessage(endpoint.getAddress(), agreementId, transferType);
+            lastCounterParty.set(new CounterParty(requestResult.processId(), requestResult.address()));
         });
         return this;
     }
@@ -366,7 +366,6 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                 var message = mapper.readValue(body, Map.class);
                 lastDspReceivedMessage.set(message);
                 var providerProcessId = (String) message.get("providerPid");
-                lastCounterParty.set(new CounterParty(providerProcessId, null));
                 monitor.debug("Received TransferStartMessage from control plane: %s. processId=%s".formatted(message, providerProcessId));
                 return new HandlerResponse(200, mapper.writeValueAsString(Map.of(
                         "@context", "https://w3id.org/dspace/2025/1/context.jsonld",

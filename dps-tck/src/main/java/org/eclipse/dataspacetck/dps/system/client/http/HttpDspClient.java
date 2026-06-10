@@ -46,8 +46,10 @@ public class HttpDspClient implements DspClient {
     @Override
     public String dspTransferState(String callbackAddress, String processId) {
         try {
-            var address = callbackAddress == null ? this.initialDspUrl : callbackAddress;
-            var url = address + "/transfers/" + processId;
+            if (callbackAddress == null) {
+                throw new RuntimeException("Cannot get transfer state: missing callback url");
+            }
+            var url = callbackAddress + "/transfers/" + processId;
 
             var authentication = Map.of("clientId", "providerId");
             var request = new Request.Builder()
@@ -64,34 +66,42 @@ public class HttpDspClient implements DspClient {
 
     @Override
     public void sendTransferStartMessage(String callbackAddress, String processId) {
-        var address = callbackAddress == null ? this.initialDspUrl : callbackAddress;
+        if (callbackAddress == null) {
+            throw new RuntimeException("Cannot send transfer start: missing callback url");
+        }
         var requestBody = message(processId, "TransferStartMessage");
-        send(address + "/transfers/" + processId + "/start", requestBody, "providerId");
+        send(callbackAddress + "/transfers/" + processId + "/start", requestBody, "providerId");
     }
 
     @Override
     public void sendTransferCompletionMessage(String callbackAddress, String processId) {
-        var address = callbackAddress == null ? this.initialDspUrl : callbackAddress;
+        if (callbackAddress == null) {
+            throw new RuntimeException("Cannot send transfer completion: missing callback url");
+        }
         var requestBody = message(processId, "TransferCompletionMessage");
-        send(address + "/transfers/" + processId + "/completion", requestBody, "providerId");
+        send(callbackAddress + "/transfers/" + processId + "/completion", requestBody, "providerId");
     }
 
     @Override
     public void sendTransferTerminationMessage(String callbackAddress, String processId) {
-        var address = callbackAddress == null ? this.initialDspUrl : callbackAddress;
+        if (callbackAddress == null) {
+            throw new RuntimeException("Cannot send transfer termination: missing callback url");
+        }
         var requestBody = message(processId, "TransferTerminationMessage");
-        send(address + "/transfers/" + processId + "/termination", requestBody, "providerId");
+        send(callbackAddress + "/transfers/" + processId + "/termination", requestBody, "providerId");
     }
 
     @Override
     public void sendTransferSuspensionMessage(String callbackAddress, String processId) {
-        var address = callbackAddress == null ? this.initialDspUrl : callbackAddress;
+        if (callbackAddress == null) {
+            throw new RuntimeException("Cannot send transfer suspension: missing callback url");
+        }
         var requestBody = message(processId, "TransferSuspensionMessage");
-        send(address + "/transfers/" + processId + "/suspension", requestBody, "providerId");
+        send(callbackAddress + "/transfers/" + processId + "/suspension", requestBody, "providerId");
     }
 
     @Override
-    public String sendTransferRequestMessage(String address, String agreementId, String transferType) {
+    public TransferRequestResult sendTransferRequestMessage(String address, String agreementId, String transferType) {
         var requestBody = Map.of(
                 "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
                 "@type", "TransferRequestMessage",
@@ -101,7 +111,8 @@ public class HttpDspClient implements DspClient {
                 "format", transferType
         );
         var response = send(initialDspUrl + "/transfers/request", requestBody, "providerId");
-        return response.get("providerPid").toString();
+        var providerPid = response.get("providerPid").toString();
+        return new TransferRequestResult(providerPid, initialDspUrl);
     }
 
     private Map<String, Object> send(String url, Map<String, String> requestBody, String senderId) {
