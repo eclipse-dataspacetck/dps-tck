@@ -37,13 +37,13 @@ import static org.eclipse.dataspacetck.core.system.ConsoleMonitor.ANSI_PROPERTY;
 import static org.eclipse.dataspacetck.core.system.ConsoleMonitor.DEBUG_PROPERTY;
 
 /**
- * Boots the DCP test suite.
+ * Boots the DPS test suite.
  */
 public class DpsTckSuite {
 
     private static final String VERSION = "1.0";
     private static final String CONFIG = "-config";
-    private static final String DEFAULT_TEST_PACKAGE = "org.eclipse.dataspacetck.dcp.verification"; // will run all tests
+    private static final String DEFAULT_TEST_PACKAGE = "org.eclipse.dataspacetck.dps.verification"; // will run all tests
     private static final String TCK_TEST_PACKAGE = TCK_PREFIX + ".test.package";
 
     public static void main(String... args) {
@@ -52,7 +52,7 @@ public class DpsTckSuite {
             properties.put(TCK_LAUNCHER, DpsSystemLauncher.class.getName());
         }
         var monitor = createMonitor(properties);
-        monitor.enableBold().message("\u001B[1mRunning DCP TCK v" + VERSION + "\u001B[0m").resetMode();
+        monitor.enableBold().message("\u001B[1mRunning DPS TCK v" + VERSION + "\u001B[0m").resetMode();
 
         var packages = properties.getOrDefault(TCK_TEST_PACKAGE, DEFAULT_TEST_PACKAGE).split(",");
 
