@@ -26,6 +26,10 @@ jobs:
     uses: eclipse-dataspacetck/tck-common/.github/workflows/publish-snapshot.yml@main
     secrets: inherit
 
+  Publish-Docker:
+    uses: ./.github/workflows/trigger-publish-docker.yml
+    secrets: inherit
+
   Publish-Dependencies:
     uses: eclipse-dataspacetck/tck-common/.github/workflows/publish-dependencies.yml@main
     permissions:

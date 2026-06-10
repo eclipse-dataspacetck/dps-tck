@@ -12,8 +12,12 @@
  *
  */
 
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.eclipse.dataspacetck.gradle.tckbuild.extensions.DockerExtension
+
 plugins {
     application
+    alias(libs.plugins.shadow)
 }
 
 val dpsSpecVersion: String by project
@@ -89,6 +93,17 @@ dependencies {
     implementation(libs.junit.platform.launcher)
 
     testRuntimeOnly(libs.junit.platform.engine)
+}
+
+configure<DockerExtension> {
+    jarFilePath = "build/libs/${project.name}-runtime.jar"
+}
+
+tasks.withType<ShadowJar> {
+    exclude("**/pom.properties", "**/pom.xml")
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    mergeServiceFiles()
+    archiveFileName.set("${project.name}-runtime.jar")
 }
 
 application {

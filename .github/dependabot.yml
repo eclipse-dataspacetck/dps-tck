@@ -30,3 +30,11 @@ updates:
     labels:
       - "dependencies"
       - "java"
+
+  - package-ecosystem: "docker"
+    directory: "/dps-tck/src/main/docker"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"

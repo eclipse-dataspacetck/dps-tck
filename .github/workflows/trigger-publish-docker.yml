@@ -1,0 +1,56 @@
+#
+#  Copyright (c) 2026 Think-it GmbH
+#
+#  This program and the accompanying materials are made available under the
+#  terms of the Apache License, Version 2.0 which is available at
+#    https://www.apache.org/licenses/LICENSE-2.0
+#
+#  SPDX-License-Identifier: Apache-2.0
+#
+#  Contributors:
+#    Think-it GmbH - initial API and implementation
+#
+
+---
+name: "Publish Snapshot Docker image"
+
+on:
+  workflow_dispatch:
+    inputs:
+      docker_tag:
+        description: "Additional Docker tags to be applied to the image"
+        required: false
+  workflow_call:
+
+jobs:
+  secrets-presence:
+    name: "Check for required credentials"
+    runs-on: ubuntu-latest
+    outputs:
+      HAS_DOCKER: ${{ steps.secret-presence.outputs.HAS_DOCKER }}
+    steps:
+      - name: Check whether secrets exist
+        id: secret-presence
+        run: |
+          [ ! -z "${{ secrets.DOCKER_HUB_TOKEN }}" ] &&
+          [ ! -z "${{ secrets.DOCKER_HUB_USER }}" ] && echo "HAS_DOCKER=true" >> $GITHUB_OUTPUT
+          exit 0
+
+  create-docker-image:
+    name: "Build and push images"
+    needs: [ secrets-presence ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        if: |
+          needs.secrets-presence.outputs.HAS_DOCKER
+
+      - uses: eclipse-dataspacetck/tck-common/.github/actions/publish-docker-image@main
+        name: Publish DPS TCK Docker image
+        with:
+          rootDir: "dps-tck"
+          imagename: "dps-tck-runtime"
+          namespace: "eclipsedataspacetck"
+          docker_user: ${{ secrets.DOCKER_HUB_USER }}
+          docker_token: ${{ secrets.DOCKER_HUB_TOKEN }}
+          docker_tag: ${{ inputs.docker_tag }}
