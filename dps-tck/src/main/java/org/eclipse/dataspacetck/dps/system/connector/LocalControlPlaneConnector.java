@@ -14,12 +14,12 @@
 
 package org.eclipse.dataspacetck.dps.system.connector;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import org.eclipse.dataspacetck.core.spi.boot.Monitor;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.Map;
@@ -225,11 +225,7 @@ public class LocalControlPlaneConnector {
     }
 
     private String serialize(Object object) {
-        try {
-            return MAPPER.writeValueAsString(object);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to serialize object", e);
-        }
+        return MAPPER.writeValueAsString(object);
     }
 
     private void sendAsync(String url, String body, String description) {
