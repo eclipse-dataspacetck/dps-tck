@@ -14,7 +14,6 @@
 
 package org.eclipse.dataspacetck.dps.system;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.dataspacetck.core.api.system.CallbackEndpoint;
 import org.eclipse.dataspacetck.core.spi.boot.Monitor;
 import org.eclipse.dataspacetck.core.spi.system.ServiceConfiguration;
@@ -32,6 +31,7 @@ import org.eclipse.dataspacetck.dps.system.connector.LocalDataPlaneConnector;
 import org.eclipse.dataspacetck.dps.system.pipeline.ControlPlaneSignalingPipeline;
 import org.eclipse.dataspacetck.dps.system.pipeline.DataPlaneSignalingPipeline;
 import org.jspecify.annotations.NonNull;
+import tools.jackson.databind.ObjectMapper;
 
 import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_PREFIX;
 

@@ -14,9 +14,6 @@
 
 package org.eclipse.dataspacetck.dps.system.pipeline;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.networknt.schema.Error;
 import org.eclipse.dataspacetck.core.api.pipeline.AbstractAsyncPipeline;
 import org.eclipse.dataspacetck.core.api.system.CallbackEndpoint;
@@ -24,8 +21,10 @@ import org.eclipse.dataspacetck.core.api.system.HandlerResponse;
 import org.eclipse.dataspacetck.core.spi.boot.Monitor;
 import org.eclipse.dataspacetck.dps.system.client.ControlPlaneClient;
 import org.eclipse.dataspacetck.dps.system.client.DspClient;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
@@ -331,7 +330,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                         var responseBody = Map.of("dataFlowId", dataFlowId, "state", transitionState);
                         return new HandlerResponse(202, mapper.writeValueAsString(responseBody),
                                 Map.of("Location", "/dataflows/" + dataFlowId + "/status"));
-                    } catch (JsonProcessingException e) {
+                    } catch (JacksonException e) {
                         return new HandlerResponse(500, "Unexpected exception: " + e.getMessage());
                     }
                 }));
@@ -351,7 +350,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                         "providerPid", UUID.randomUUID().toString(),
                         "consumerPid", counterPartyProcessId.get()
                 )));
-            } catch (IOException e) {
+            } catch (JacksonException e) {
                 return new HandlerResponse(400, "Failed to parse TransferRequestMessage: " + e.getMessage());
             }
         });
@@ -371,7 +370,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                         "providerPid", counterPartyProcessId.get(),
                         "consumerPid", UUID.randomUUID()
                 )));
-            } catch (IOException e) {
+            } catch (JacksonException e) {
                 return new HandlerResponse(400, "Failed to parse TransferStartMessage: " + e.getMessage());
             }
         });
@@ -386,7 +385,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                 return new DpsDeserializationResult(null, errors);
             }
             return new DpsDeserializationResult(mapper.convertValue(node, Map.class), null);
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             var error = Error.builder().message("Failed to parse %s: %s".formatted(message.name(), e.getMessage())).build();
             return new DpsDeserializationResult(null, List.of(error));
         }
@@ -395,7 +394,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
     private HandlerResponse success(Map<String, String> responseBody) {
         try {
             return new HandlerResponse(200, mapper.writeValueAsString(responseBody));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return new HandlerResponse(500, "Unexpected exception: " + e.getMessage());
         }
     }
@@ -403,7 +402,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
     private HandlerResponse badRequest(List<Error> validationErrors) {
         try {
             return new HandlerResponse(400, "Error evaluating body: " + mapper.writeValueAsString(validationErrors));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return new HandlerResponse(500, "Unexpected exception: " + e.getMessage());
         }
     }
