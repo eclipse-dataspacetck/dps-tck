@@ -46,9 +46,6 @@ public class HttpDspClient implements DspClient {
     @Override
     public String dspTransferState(String callbackAddress, String processId) {
         try {
-            if (callbackAddress == null) {
-                throw new RuntimeException("Cannot get transfer state: missing callback url");
-            }
             var url = callbackAddress + "/transfers/" + processId;
 
             var authentication = Map.of("clientId", "providerId");
@@ -66,36 +63,24 @@ public class HttpDspClient implements DspClient {
 
     @Override
     public void sendTransferStartMessage(String callbackAddress, String processId) {
-        if (callbackAddress == null) {
-            throw new RuntimeException("Cannot send transfer start: missing callback url");
-        }
         var requestBody = message(processId, "TransferStartMessage");
         send(callbackAddress + "/transfers/" + processId + "/start", requestBody, "providerId");
     }
 
     @Override
     public void sendTransferCompletionMessage(String callbackAddress, String processId) {
-        if (callbackAddress == null) {
-            throw new RuntimeException("Cannot send transfer completion: missing callback url");
-        }
         var requestBody = message(processId, "TransferCompletionMessage");
         send(callbackAddress + "/transfers/" + processId + "/completion", requestBody, "providerId");
     }
 
     @Override
     public void sendTransferTerminationMessage(String callbackAddress, String processId) {
-        if (callbackAddress == null) {
-            throw new RuntimeException("Cannot send transfer termination: missing callback url");
-        }
         var requestBody = message(processId, "TransferTerminationMessage");
         send(callbackAddress + "/transfers/" + processId + "/termination", requestBody, "providerId");
     }
 
     @Override
     public void sendTransferSuspensionMessage(String callbackAddress, String processId) {
-        if (callbackAddress == null) {
-            throw new RuntimeException("Cannot send transfer suspension: missing callback url");
-        }
         var requestBody = message(processId, "TransferSuspensionMessage");
         send(callbackAddress + "/transfers/" + processId + "/suspension", requestBody, "providerId");
     }
@@ -110,7 +95,7 @@ public class HttpDspClient implements DspClient {
                 "agreementId", agreementId,
                 "format", transferType
         );
-        var response = send(initialDspUrl + "/transfers/request", requestBody, "providerId");
+        var response = send(initialDspUrl + "/transfers/request", requestBody, "consumerId");
         var providerPid = response.get("providerPid").toString();
         return new TransferRequestResult(providerPid, initialDspUrl);
     }

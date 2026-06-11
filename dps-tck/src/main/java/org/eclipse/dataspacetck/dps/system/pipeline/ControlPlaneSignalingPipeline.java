@@ -217,7 +217,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         return thenWait("transfer to be in state " + state, () -> {
             var counterParty = lastCounterParty.get();
             if (counterParty == null) {
-                throw new RuntimeException("Cannot signal completion: no actual process ID received from prepare message");
+                throw new RuntimeException("Cannot wait for transfer state: no counter party data has been set");
             }
             var actualState = dspClient.dspTransferState(counterParty.address(), counterParty.processId());
             monitor.debug("TCK. DSP: expecting processId %s state to be %s. Actual state: %s".formatted(counterParty.processId(), state, actualState));
@@ -238,7 +238,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         stages.add(() -> {
             var counterParty = lastCounterParty.get();
             if (counterParty == null) {
-                throw new RuntimeException("Cannot signal start: no actual process ID received from prepare message");
+                throw new RuntimeException("Cannot signal start: no counter party data has been set");
             }
             monitor.debug("TCK. DSP: send TransferStartMessage for processId=" + counterParty.processId());
             dspClient.sendTransferStartMessage(counterParty.address(), counterParty.processId());
@@ -250,7 +250,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         stages.add(() -> {
             var counterParty = lastCounterParty.get();
             if (counterParty == null) {
-                throw new RuntimeException("Cannot signal completion: no actual process ID received from prepare message");
+                throw new RuntimeException("Cannot signal completion: no counter party data has been set");
             }
             monitor.debug("TCK. DSP: send TransferCompletionMessage for processId=" + counterParty.processId());
             dspClient.sendTransferCompletionMessage(counterParty.address(), counterParty.processId());
@@ -262,7 +262,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         stages.add(() -> {
             var counterParty = lastCounterParty.get();
             if (counterParty == null) {
-                throw new RuntimeException("Cannot signal termination: no actual process ID received from prepare message");
+                throw new RuntimeException("Cannot signal termination: no counter party data has been set");
             }
             monitor.debug("TCK. DSP: send TransferTerminationMessage for processId=" + counterParty.processId());
             dspClient.sendTransferTerminationMessage(counterParty.address(), counterParty.processId());
@@ -274,7 +274,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         stages.add(() -> {
             var counterParty = lastCounterParty.get();
             if (counterParty == null) {
-                throw new RuntimeException("Cannot signal suspension: no actual process ID received");
+                throw new RuntimeException("Cannot signal suspension: no counter party data has been set");
             }
             monitor.debug("TCK. DSP: send TransferSuspensionMessage for processId=" + counterParty.processId());
             dspClient.sendTransferSuspensionMessage(counterParty.address(), counterParty.processId());
