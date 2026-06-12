@@ -68,7 +68,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
     private final DspClient dspClient;
     private final AtomicReference<ReceivedDpsMessage> lastDpsReceivedMessage = new AtomicReference<>();
     private final AtomicReference<Map<String, Object>> lastDspReceivedMessage = new AtomicReference<>();
-    private final AtomicReference<String> counterPartyProcessId = new AtomicReference<>();
+    private final AtomicReference<CounterParty> lastCounterParty = new AtomicReference<>();
     private final AtomicReference<String> capturedProcessId = new AtomicReference<>();
     private final AtomicReference<String> lastReceivedDataFlowId = new AtomicReference<>();
     private final AtomicReference<String> lastReceivedCallbackAddress = new AtomicReference<>();
@@ -215,12 +215,12 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
 
     public ControlPlaneSignalingPipeline thenWaitForTransferToBeInState(String state) {
         return thenWait("transfer to be in state " + state, () -> {
-            var id = counterPartyProcessId.get();
-            if (id == null) {
-                throw new RuntimeException("Cannot signal completion: no actual process ID received from prepare message");
+            var counterParty = lastCounterParty.get();
+            if (counterParty == null) {
+                throw new RuntimeException("Cannot wait for transfer state: no counter party data has been set");
             }
-            var actualState = dspClient.dspTransferState(id);
-            monitor.debug("TCK. DSP: expecting processId %s state to be %s. Actual state: %s".formatted(id, state, actualState));
+            var actualState = dspClient.dspTransferState(counterParty.address(), counterParty.processId());
+            monitor.debug("TCK. DSP: expecting processId %s state to be %s. Actual state: %s".formatted(counterParty.processId(), state, actualState));
             return Objects.equals(actualState, state);
         });
     }
@@ -228,56 +228,56 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
     public ControlPlaneSignalingPipeline sendTransferRequestMessage(String agreementId, String transferType) {
         stages.add(() -> {
             monitor.debug("Send DSP TransferRequestMessage");
-            var id = dspClient.sendTransferRequestMessage(endpoint.getAddress(), agreementId, transferType);
-            counterPartyProcessId.set(id);
+            var requestResult = dspClient.sendTransferRequestMessage(endpoint.getAddress(), agreementId, transferType);
+            lastCounterParty.set(new CounterParty(requestResult.processId(), requestResult.address()));
         });
         return this;
     }
 
     public ControlPlaneSignalingPipeline sendTransferStartMessage() {
         stages.add(() -> {
-            var id = counterPartyProcessId.get();
-            if (id == null) {
-                throw new RuntimeException("Cannot signal start: no actual process ID received from prepare message");
+            var counterParty = lastCounterParty.get();
+            if (counterParty == null) {
+                throw new RuntimeException("Cannot signal start: no counter party data has been set");
             }
-            monitor.debug("TCK. DSP: send TransferStartMessage for processId=" + id);
-            dspClient.sendTransferStartMessage(id);
+            monitor.debug("TCK. DSP: send TransferStartMessage for processId=" + counterParty.processId());
+            dspClient.sendTransferStartMessage(counterParty.address(), counterParty.processId());
         });
         return this;
     }
 
     public ControlPlaneSignalingPipeline sendTransferCompletionMessage() {
         stages.add(() -> {
-            var id = counterPartyProcessId.get();
-            if (id == null) {
-                throw new RuntimeException("Cannot signal completion: no actual process ID received from prepare message");
+            var counterParty = lastCounterParty.get();
+            if (counterParty == null) {
+                throw new RuntimeException("Cannot signal completion: no counter party data has been set");
             }
-            monitor.debug("TCK. DSP: send TransferCompletionMessage for processId=" + id);
-            dspClient.sendTransferCompletionMessage(id);
+            monitor.debug("TCK. DSP: send TransferCompletionMessage for processId=" + counterParty.processId());
+            dspClient.sendTransferCompletionMessage(counterParty.address(), counterParty.processId());
         });
         return this;
     }
 
     public ControlPlaneSignalingPipeline sendTransferTerminationMessage() {
         stages.add(() -> {
-            var id = counterPartyProcessId.get();
-            if (id == null) {
-                throw new RuntimeException("Cannot signal termination: no actual process ID received from prepare message");
+            var counterParty = lastCounterParty.get();
+            if (counterParty == null) {
+                throw new RuntimeException("Cannot signal termination: no counter party data has been set");
             }
-            monitor.debug("TCK. DSP: send TransferTerminationMessage for processId=" + id);
-            dspClient.sendTransferTerminationMessage(id);
+            monitor.debug("TCK. DSP: send TransferTerminationMessage for processId=" + counterParty.processId());
+            dspClient.sendTransferTerminationMessage(counterParty.address(), counterParty.processId());
         });
         return this;
     }
 
     public ControlPlaneSignalingPipeline sendTransferSuspensionMessage() {
         stages.add(() -> {
-            var id = counterPartyProcessId.get();
-            if (id == null) {
-                throw new RuntimeException("Cannot signal suspension: no actual process ID received");
+            var counterParty = lastCounterParty.get();
+            if (counterParty == null) {
+                throw new RuntimeException("Cannot signal suspension: no counter party data has been set");
             }
-            monitor.debug("TCK. DSP: send TransferSuspensionMessage for processId=" + id);
-            dspClient.sendTransferSuspensionMessage(id);
+            monitor.debug("TCK. DSP: send TransferSuspensionMessage for processId=" + counterParty.processId());
+            dspClient.sendTransferSuspensionMessage(counterParty.address(), counterParty.processId());
         });
         return this;
     }
@@ -343,13 +343,15 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
             try {
                 var message = mapper.readValue(body, Map.class);
                 lastDspReceivedMessage.set(message);
-                counterPartyProcessId.set((String) message.get("consumerPid"));
-                monitor.debug("Received TransferRequestMessage from control plane: %s, processId=%s".formatted(message, counterPartyProcessId.get()));
+                var consumerProcessId = (String) message.get("consumerPid");
+                var callbackAddress = (String) message.get("callbackAddress");
+                lastCounterParty.set(new CounterParty(consumerProcessId, callbackAddress));
+                monitor.debug("Received TransferRequestMessage from control plane: %s, processId=%s".formatted(message, consumerProcessId));
                 return new HandlerResponse(200, mapper.writeValueAsString(Map.of(
                         "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
                         "@type", "TransferProcess",
                         "providerPid", UUID.randomUUID().toString(),
-                        "consumerPid", counterPartyProcessId.get()
+                        "consumerPid", consumerProcessId
                 )));
             } catch (IOException e) {
                 return new HandlerResponse(400, "Failed to parse TransferRequestMessage: " + e.getMessage());
@@ -363,12 +365,12 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
             try {
                 var message = mapper.readValue(body, Map.class);
                 lastDspReceivedMessage.set(message);
-                counterPartyProcessId.set((String) message.get("providerPid"));
-                monitor.debug("Received TransferStartMessage from control plane: %s. processId=%s".formatted(message, counterPartyProcessId.get()));
+                var providerProcessId = (String) message.get("providerPid");
+                monitor.debug("Received TransferStartMessage from control plane: %s. processId=%s".formatted(message, providerProcessId));
                 return new HandlerResponse(200, mapper.writeValueAsString(Map.of(
                         "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
                         "@type", "TransferProcess",
-                        "providerPid", counterPartyProcessId.get(),
+                        "providerPid", providerProcessId,
                         "consumerPid", UUID.randomUUID()
                 )));
             } catch (IOException e) {
@@ -409,4 +411,6 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
     }
 
     record ReceivedDpsMessage(String path, DpsMessage type, Map<String, Object> content) {}
+
+    record CounterParty(String processId, String address) {}
 }
