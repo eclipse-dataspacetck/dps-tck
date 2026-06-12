@@ -14,6 +14,7 @@
 
 package org.eclipse.dataspacetck.dps.system.client.http;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -44,14 +45,13 @@ public class HttpDspClient implements DspClient {
     }
 
     @Override
-    public String dspTransferState(String callbackAddress, String processId) {
+    public String dspTransferState(String senderId, String callbackAddress, String processId) {
         try {
             var url = callbackAddress + "/transfers/" + processId;
 
-            var authentication = Map.of("clientId", "providerId");
             var request = new Request.Builder()
                     .url(url)
-                    .addHeader("Authorization", mapper.writeValueAsString(authentication))
+                    .addHeader("Authorization", createAuthorizationToken(senderId))
                     .get()
                     .build();
 
@@ -62,31 +62,31 @@ public class HttpDspClient implements DspClient {
     }
 
     @Override
-    public void sendTransferStartMessage(String callbackAddress, String processId) {
+    public void sendTransferStartMessage(String senderId, String callbackAddress, String processId) {
         var requestBody = message(processId, "TransferStartMessage");
-        send(callbackAddress + "/transfers/" + processId + "/start", requestBody, "providerId");
+        send(callbackAddress + "/transfers/" + processId + "/start", requestBody, senderId);
     }
 
     @Override
-    public void sendTransferCompletionMessage(String callbackAddress, String processId) {
+    public void sendTransferCompletionMessage(String senderId, String callbackAddress, String processId) {
         var requestBody = message(processId, "TransferCompletionMessage");
-        send(callbackAddress + "/transfers/" + processId + "/completion", requestBody, "providerId");
+        send(callbackAddress + "/transfers/" + processId + "/completion", requestBody, senderId);
     }
 
     @Override
-    public void sendTransferTerminationMessage(String callbackAddress, String processId) {
+    public void sendTransferTerminationMessage(String senderId, String callbackAddress, String processId) {
         var requestBody = message(processId, "TransferTerminationMessage");
-        send(callbackAddress + "/transfers/" + processId + "/termination", requestBody, "providerId");
+        send(callbackAddress + "/transfers/" + processId + "/termination", requestBody, senderId);
     }
 
     @Override
-    public void sendTransferSuspensionMessage(String callbackAddress, String processId) {
+    public void sendTransferSuspensionMessage(String senderId, String callbackAddress, String processId) {
         var requestBody = message(processId, "TransferSuspensionMessage");
-        send(callbackAddress + "/transfers/" + processId + "/suspension", requestBody, "providerId");
+        send(callbackAddress + "/transfers/" + processId + "/suspension", requestBody, senderId);
     }
 
     @Override
-    public TransferRequestResult sendTransferRequestMessage(String address, String agreementId, String transferType) {
+    public TransferRequestResult sendTransferRequestMessage(String senderId, String address, String agreementId, String transferType) {
         var requestBody = Map.of(
                 "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
                 "@type", "TransferRequestMessage",
@@ -95,7 +95,7 @@ public class HttpDspClient implements DspClient {
                 "agreementId", agreementId,
                 "format", transferType
         );
-        var response = send(initialDspUrl + "/transfers/request", requestBody, "consumerId");
+        var response = send(initialDspUrl + "/transfers/request", requestBody, senderId);
         var providerPid = response.get("providerPid").toString();
         return new TransferRequestResult(providerPid, initialDspUrl);
     }
@@ -106,9 +106,7 @@ public class HttpDspClient implements DspClient {
 
             var request = new Request.Builder()
                     .url(url)
-                    .addHeader("Authorization", mapper.writeValueAsString(Map.of(
-                            "clientId", senderId
-                    )))
+                    .addHeader("Authorization", createAuthorizationToken(senderId))
                     .post(RequestBody.create(mapper.writeValueAsString(requestBody), JSON))
                     .build();
 
@@ -117,6 +115,12 @@ public class HttpDspClient implements DspClient {
             throw new RuntimeException("Failed to send DSP message: " + e.getMessage(), e);
         }
 
+    }
+
+    private String createAuthorizationToken(String senderId) throws JsonProcessingException {
+        return mapper.writeValueAsString(Map.of(
+                "clientId", senderId
+        ));
     }
 
     private Map<String, Object> execute(Request request) throws IOException {

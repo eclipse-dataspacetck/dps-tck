@@ -30,33 +30,33 @@ public class LocalDspClient implements DspClient {
     }
 
     @Override
-    public String dspTransferState(String callbackAddress, String processId) {
+    public String dspTransferState(String senderId, String callbackAddress, String processId) {
         return connector.getTransferState(processId);
     }
 
     @Override
-    public void sendTransferStartMessage(String callbackAddress, String processId) {
+    public void sendTransferStartMessage(String senderId, String callbackAddress, String processId) {
         connector.receiveTransferStart(processId);
     }
 
     @Override
-    public void sendTransferCompletionMessage(String callbackAddress, String processId) {
+    public void sendTransferCompletionMessage(String senderId, String callbackAddress, String processId) {
         connector.receiveTransferCompletion(processId);
     }
 
     @Override
-    public void sendTransferTerminationMessage(String callbackAddress, String processId) {
+    public void sendTransferTerminationMessage(String senderId, String callbackAddress, String processId) {
         connector.receiveTransferTermination(processId);
     }
 
     @Override
-    public TransferRequestResult sendTransferRequestMessage(String address, String agreementId, String transferType) {
+    public TransferRequestResult sendTransferRequestMessage(String senderId, String address, String agreementId, String transferType) {
         var providerPid = connector.receiveTransferRequestMessage(address, agreementId);
         return new TransferRequestResult(providerPid, null);
     }
 
     @Override
-    public void sendTransferSuspensionMessage(String callbackAddress, String processId) {
+    public void sendTransferSuspensionMessage(String senderId, String callbackAddress, String processId) {
         connector.receiveTransferSuspension(processId);
     }
 

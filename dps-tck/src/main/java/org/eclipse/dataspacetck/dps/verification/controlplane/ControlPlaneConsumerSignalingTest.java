@@ -57,6 +57,9 @@ public class ControlPlaneConsumerSignalingTest {
     @ConfigParam
     protected String datasetId = randomUUID().toString();
 
+    @ConfigParam
+    protected String tckParticipantId = "providerId";
+
     @MandatoryTest
     @DisplayName("CP_C:01-01: Verify DataFlowPrepareMessage is dispatched and completed notification is sent to the data plane")
     @TestSequenceDiagram("""
@@ -80,14 +83,14 @@ public class ControlPlaneConsumerSignalingTest {
                 .triggerDataFlowPreparation(agreementId, datasetId)
                 .thenWaitForPrepareMessage()
                 .thenWaitForTransferRequestMessage()
-                .thenWaitForTransferToBeInState("REQUESTED")
+                .thenWaitForTransferToBeInState("REQUESTED", tckParticipantId)
                 .expectDataFlowStartedNotificationMessage()
-                .sendTransferStartMessage()
+                .sendTransferStartMessage(tckParticipantId)
                 .thenWaitForStartedNotificationMessage()
-                .thenWaitForTransferToBeInState("STARTED")
+                .thenWaitForTransferToBeInState("STARTED", tckParticipantId)
                 .expectDataFlowCompletedMessage()
-                .sendTransferCompletionMessage()
-                .thenWaitForTransferToBeInState("COMPLETED")
+                .sendTransferCompletionMessage(tckParticipantId)
+                .thenWaitForTransferToBeInState("COMPLETED", tckParticipantId)
                 .thenWaitForCompletedMessage()
                 .execute();
     }
@@ -115,14 +118,14 @@ public class ControlPlaneConsumerSignalingTest {
                 .triggerDataFlowPreparation(agreementId, datasetId)
                 .thenWaitForPrepareMessage()
                 .thenWaitForTransferRequestMessage()
-                .thenWaitForTransferToBeInState("REQUESTED")
+                .thenWaitForTransferToBeInState("REQUESTED", tckParticipantId)
                 .expectDataFlowStartedNotificationMessage()
-                .sendTransferStartMessage()
+                .sendTransferStartMessage(tckParticipantId)
                 .thenWaitForStartedNotificationMessage()
-                .thenWaitForTransferToBeInState("STARTED")
+                .thenWaitForTransferToBeInState("STARTED", tckParticipantId)
                 .expectDataFlowTerminateMessage()
-                .sendTransferTerminationMessage()
-                .thenWaitForTransferToBeInState("TERMINATED")
+                .sendTransferTerminationMessage(tckParticipantId)
+                .thenWaitForTransferToBeInState("TERMINATED", tckParticipantId)
                 .thenWaitForTerminateMessage()
                 .execute();
     }
@@ -156,20 +159,20 @@ public class ControlPlaneConsumerSignalingTest {
                 .triggerDataFlowPreparation(agreementId, datasetId)
                 .thenWaitForPrepareMessage()
                 .thenWaitForTransferRequestMessage()
-                .thenWaitForTransferToBeInState("REQUESTED")
+                .thenWaitForTransferToBeInState("REQUESTED", tckParticipantId)
                 .expectDataFlowStartedNotificationMessage()
-                .sendTransferStartMessage()
+                .sendTransferStartMessage(tckParticipantId)
                 .thenWaitForStartedNotificationMessage()
-                .thenWaitForTransferToBeInState("STARTED")
+                .thenWaitForTransferToBeInState("STARTED", tckParticipantId)
                 .expectDataFlowSuspendMessage()
-                .sendTransferSuspensionMessage()
+                .sendTransferSuspensionMessage(tckParticipantId)
                 .thenWaitForSuspendMessage()
                 .expectDataFlowResumeMessage()
-                .sendTransferStartMessage()
+                .sendTransferStartMessage(tckParticipantId)
                 .thenWaitForResumeMessage()
                 .expectDataFlowCompletedMessage()
-                .sendTransferCompletionMessage()
-                .thenWaitForTransferToBeInState("COMPLETED")
+                .sendTransferCompletionMessage(tckParticipantId)
+                .thenWaitForTransferToBeInState("COMPLETED", tckParticipantId)
                 .thenWaitForCompletedMessage()
                 .execute();
     }
@@ -200,17 +203,17 @@ public class ControlPlaneConsumerSignalingTest {
                 .triggerDataFlowPreparation(agreementId, datasetId)
                 .thenWaitForPrepareMessage()
                 .thenWaitForTransferRequestMessage()
-                .thenWaitForTransferToBeInState("REQUESTED")
+                .thenWaitForTransferToBeInState("REQUESTED", tckParticipantId)
                 .expectDataFlowStartedNotificationMessage()
-                .sendTransferStartMessage()
+                .sendTransferStartMessage(tckParticipantId)
                 .thenWaitForStartedNotificationMessage()
-                .thenWaitForTransferToBeInState("STARTED")
+                .thenWaitForTransferToBeInState("STARTED", tckParticipantId)
                 .expectDataFlowSuspendMessage()
-                .sendTransferSuspensionMessage()
+                .sendTransferSuspensionMessage(tckParticipantId)
                 .thenWaitForSuspendMessage()
                 .expectDataFlowTerminateMessage()
-                .sendTransferTerminationMessage()
-                .thenWaitForTransferToBeInState("TERMINATED")
+                .sendTransferTerminationMessage(tckParticipantId)
+                .thenWaitForTransferToBeInState("TERMINATED", tckParticipantId)
                 .thenWaitForTerminateMessage()
                 .execute();
     }
@@ -241,14 +244,14 @@ public class ControlPlaneConsumerSignalingTest {
                 .thenWaitForPrepareMessage()
                 .thenSendPreparedCallback()
                 .thenWaitForTransferRequestMessage()
-                .thenWaitForTransferToBeInState("REQUESTED")
+                .thenWaitForTransferToBeInState("REQUESTED", tckParticipantId)
                 .expectDataFlowStartedNotificationMessage()
-                .sendTransferStartMessage()
+                .sendTransferStartMessage(tckParticipantId)
                 .thenWaitForStartedNotificationMessage()
-                .thenWaitForTransferToBeInState("STARTED")
+                .thenWaitForTransferToBeInState("STARTED", tckParticipantId)
                 .expectDataFlowCompletedMessage()
-                .sendTransferCompletionMessage()
-                .thenWaitForTransferToBeInState("COMPLETED")
+                .sendTransferCompletionMessage(tckParticipantId)
+                .thenWaitForTransferToBeInState("COMPLETED", tckParticipantId)
                 .thenWaitForCompletedMessage()
                 .execute();
     }
