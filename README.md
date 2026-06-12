@@ -96,6 +96,52 @@ In both cases, environment variables are also read: prefix `dataspacetck.` with 
 | `dataspacetck.debug`                         | `false`                                     | Enable verbose debug logging                                                                 |
 | `dataspacetck.launcher`                      | `DpsSystemLauncher`                         | System launcher class (override for custom bootstrap)                                        |
 
+### Control-plane test agreement IDs
+
+Each control-plane test method has a configurable `agreementId` property. The key is derived from the test method name and the field name, uppercased and joined with `_` — so test `cp_c_01_01` uses property `CP_C_01_01_AGREEMENTID`. When no value is configured the TCK generates a random UUID, which will not match any agreement in a real control plane.
+
+| Property               | Description                                               |
+|------------------------|-----------------------------------------------------------|
+| `CP_C_01_01_AGREEMENTID` | Contract agreement ID for consumer signaling test 01-01 |
+| `CP_C_01_02_AGREEMENTID` | Contract agreement ID for consumer signaling test 01-02 |
+| `CP_...` | ... and so on |
+
+Currently all tests can share a single agreement; set every property to the same value.
+
+### Contract agreement requirements
+
+Control-plane tests require a contract agreement to exist in the system under test **before the tests run**. The agreement must satisfy two conditions:
+
+1. **Agreement ID** — matches the value configured via the `*_AGREEMENTID` properties above.
+2. **Participant IDs** — the agreement's consumer and provider IDs must match the participant IDs the TCK uses when sending DSP messages (see below).
+
+Control planes typically validate that the sender of a DSP message is the participant named in the agreement. If the IDs do not match, messages will be rejected and the tests will fail.
+
+### TCK participant IDs
+
+When the TCK sends DSP messages it identifies itself as a participant. Each test class exposes a `tckParticipantId` field, also configurable as a property (key: `<TEST_METHOD_NAME>_TCKPARTICIPANTID`):
+
+| Test class | Role the TCK plays | Default `tckParticipantId` | Meaning |
+|---|---|---|---|
+| `ControlPlaneProviderSignalingTest` (CP_P) | Consumer control plane | `consumerId` | The TCK sends `TransferRequestMessage` as the consumer — the agreement must name `consumerId` as its consumer participant |
+| `ControlPlaneConsumerSignalingTest` (CP_C) | Provider control plane | `providerId` | The TCK sends `TransferStartMessage` etc. as the provider — the agreement must name `providerId` as its provider participant |
+
+If your system already has a contract agreement with different participant IDs you can configure the TCK to use those instead of the defaults. For example, if the agreement already has `my-consumer` and `my-provider` as participant IDs:
+
+```properties
+# For CP_P tests (TCK acts as consumer)
+CP_P_01_01_TCKPARTICIPANTID=my-consumer
+CP_P_01_02_TCKPARTICIPANTID=my-consumer
+# ... and so on for each test
+
+# For CP_C tests (TCK acts as provider)
+CP_C_01_01_TCKPARTICIPANTID=my-provider
+CP_C_01_02_TCKPARTICIPANTID=my-provider
+# ... and so on for each test
+```
+
+Alternatively, create the contract agreement with the default IDs (`consumerId` and `providerId`) so no extra configuration is needed.
+
 
 ## Test coverage
 

@@ -213,71 +213,71 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         return thenWait("TransferRequestedMessage to be received", () -> lastDspReceivedMessage.get() != null);
     }
 
-    public ControlPlaneSignalingPipeline thenWaitForTransferToBeInState(String state) {
+    public ControlPlaneSignalingPipeline thenWaitForTransferToBeInState(String state, String senderId) {
         return thenWait("transfer to be in state " + state, () -> {
             var counterParty = lastCounterParty.get();
             if (counterParty == null) {
                 throw new RuntimeException("Cannot wait for transfer state: no counter party data has been set");
             }
-            var actualState = dspClient.dspTransferState(counterParty.address(), counterParty.processId());
+            var actualState = dspClient.dspTransferState(senderId, counterParty.address(), counterParty.processId());
             monitor.debug("TCK. DSP: expecting processId %s state to be %s. Actual state: %s".formatted(counterParty.processId(), state, actualState));
             return Objects.equals(actualState, state);
         });
     }
 
-    public ControlPlaneSignalingPipeline sendTransferRequestMessage(String agreementId, String transferType) {
+    public ControlPlaneSignalingPipeline sendTransferRequestMessage(String senderId, String agreementId, String transferType) {
         stages.add(() -> {
             monitor.debug("Send DSP TransferRequestMessage");
-            var requestResult = dspClient.sendTransferRequestMessage(endpoint.getAddress(), agreementId, transferType);
+            var requestResult = dspClient.sendTransferRequestMessage(senderId, endpoint.getAddress(), agreementId, transferType);
             lastCounterParty.set(new CounterParty(requestResult.processId(), requestResult.address()));
         });
         return this;
     }
 
-    public ControlPlaneSignalingPipeline sendTransferStartMessage() {
+    public ControlPlaneSignalingPipeline sendTransferStartMessage(String senderId) {
         stages.add(() -> {
             var counterParty = lastCounterParty.get();
             if (counterParty == null) {
                 throw new RuntimeException("Cannot signal start: no counter party data has been set");
             }
             monitor.debug("TCK. DSP: send TransferStartMessage for processId=" + counterParty.processId());
-            dspClient.sendTransferStartMessage(counterParty.address(), counterParty.processId());
+            dspClient.sendTransferStartMessage(senderId, counterParty.address(), counterParty.processId());
         });
         return this;
     }
 
-    public ControlPlaneSignalingPipeline sendTransferCompletionMessage() {
+    public ControlPlaneSignalingPipeline sendTransferCompletionMessage(String senderId) {
         stages.add(() -> {
             var counterParty = lastCounterParty.get();
             if (counterParty == null) {
                 throw new RuntimeException("Cannot signal completion: no counter party data has been set");
             }
             monitor.debug("TCK. DSP: send TransferCompletionMessage for processId=" + counterParty.processId());
-            dspClient.sendTransferCompletionMessage(counterParty.address(), counterParty.processId());
+            dspClient.sendTransferCompletionMessage(senderId, counterParty.address(), counterParty.processId());
         });
         return this;
     }
 
-    public ControlPlaneSignalingPipeline sendTransferTerminationMessage() {
+    public ControlPlaneSignalingPipeline sendTransferTerminationMessage(String senderId) {
         stages.add(() -> {
             var counterParty = lastCounterParty.get();
             if (counterParty == null) {
                 throw new RuntimeException("Cannot signal termination: no counter party data has been set");
             }
             monitor.debug("TCK. DSP: send TransferTerminationMessage for processId=" + counterParty.processId());
-            dspClient.sendTransferTerminationMessage(counterParty.address(), counterParty.processId());
+            dspClient.sendTransferTerminationMessage(senderId, counterParty.address(), counterParty.processId());
         });
         return this;
     }
 
-    public ControlPlaneSignalingPipeline sendTransferSuspensionMessage() {
+    public ControlPlaneSignalingPipeline sendTransferSuspensionMessage(String senderId) {
         stages.add(() -> {
             var counterParty = lastCounterParty.get();
             if (counterParty == null) {
                 throw new RuntimeException("Cannot signal suspension: no counter party data has been set");
             }
             monitor.debug("TCK. DSP: send TransferSuspensionMessage for processId=" + counterParty.processId());
-            dspClient.sendTransferSuspensionMessage(counterParty.address(), counterParty.processId());
+            dspClient.sendTransferSuspensionMessage(senderId, counterParty.address(), counterParty.processId());
         });
         return this;
     }

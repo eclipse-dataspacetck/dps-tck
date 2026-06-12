@@ -16,17 +16,17 @@ package org.eclipse.dataspacetck.dps.system.client;
 
 public interface DspClient {
 
-    String dspTransferState(String callbackAddress, String processId);
+    String dspTransferState(String senderId, String callbackAddress, String processId);
 
-    void sendTransferStartMessage(String callbackAddress, String processId);
+    void sendTransferStartMessage(String senderId, String callbackAddress, String processId);
 
-    void sendTransferCompletionMessage(String callbackAddress, String processId);
+    void sendTransferCompletionMessage(String senderId, String callbackAddress, String processId);
 
-    void sendTransferTerminationMessage(String callbackAddress, String processId);
+    void sendTransferTerminationMessage(String senderId, String callbackAddress, String processId);
 
-    TransferRequestResult sendTransferRequestMessage(String address, String agreementId, String transferType);
+    TransferRequestResult sendTransferRequestMessage(String senderId, String address, String agreementId, String transferType);
 
-    void sendTransferSuspensionMessage(String callbackAddress, String processId);
+    void sendTransferSuspensionMessage(String senderId, String callbackAddress, String processId);
 
     record TransferRequestResult(String processId, String address) {}
 }

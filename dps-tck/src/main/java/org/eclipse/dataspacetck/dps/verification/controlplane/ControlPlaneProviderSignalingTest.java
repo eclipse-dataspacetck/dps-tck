@@ -56,6 +56,9 @@ public class ControlPlaneProviderSignalingTest {
     @ConfigParam
     protected String agreementId = randomUUID().toString();
 
+    @ConfigParam
+    protected String tckParticipantId = "consumerId";
+
     @MandatoryTest
     @DisplayName("CP_P:01-01: Verify DataFlowStartMessage is dispatched when a transfer request is received and completed notification is sent to the data plane")
     @TestSequenceDiagram("""
@@ -71,10 +74,10 @@ public class ControlPlaneProviderSignalingTest {
     public void cp_p_01_01() {
         signalingPipeline
                 .expectDataFlowStartMessage()
-                .sendTransferRequestMessage(agreementId, "HttpData-PULL")
+                .sendTransferRequestMessage(tckParticipantId, agreementId, "HttpData-PULL")
                 .thenWaitForDataFlowStartMessage()
                 .expectDataFlowCompletedMessage()
-                .sendTransferCompletionMessage()
+                .sendTransferCompletionMessage(tckParticipantId)
                 .thenWaitForCompletedMessage()
                 .execute();
     }
@@ -94,10 +97,10 @@ public class ControlPlaneProviderSignalingTest {
     public void cp_p_01_02() {
         signalingPipeline
                 .expectDataFlowStartMessage()
-                .sendTransferRequestMessage(agreementId, "HttpData-PULL")
+                .sendTransferRequestMessage(tckParticipantId, agreementId, "HttpData-PULL")
                 .thenWaitForDataFlowStartMessage()
                 .expectDataFlowTerminateMessage()
-                .sendTransferTerminationMessage()
+                .sendTransferTerminationMessage(tckParticipantId)
                 .thenWaitForTerminateMessage()
                 .execute();
     }
@@ -123,16 +126,16 @@ public class ControlPlaneProviderSignalingTest {
     public void cp_p_02_01() {
         signalingPipeline
                 .expectDataFlowStartMessage()
-                .sendTransferRequestMessage(agreementId, "HttpData-PULL")
+                .sendTransferRequestMessage(tckParticipantId, agreementId, "HttpData-PULL")
                 .thenWaitForDataFlowStartMessage()
                 .expectDataFlowSuspendMessage()
-                .sendTransferSuspensionMessage()
+                .sendTransferSuspensionMessage(tckParticipantId)
                 .thenWaitForSuspendMessage()
                 .expectDataFlowResumeMessage()
-                .sendTransferStartMessage()
+                .sendTransferStartMessage(tckParticipantId)
                 .thenWaitForResumeMessage()
                 .expectDataFlowCompletedMessage()
-                .sendTransferCompletionMessage()
+                .sendTransferCompletionMessage(tckParticipantId)
                 .thenWaitForCompletedMessage()
                 .execute();
     }
@@ -155,13 +158,13 @@ public class ControlPlaneProviderSignalingTest {
     public void cp_p_02_02() {
         signalingPipeline
                 .expectDataFlowStartMessage()
-                .sendTransferRequestMessage(agreementId, "HttpData-PULL")
+                .sendTransferRequestMessage(tckParticipantId, agreementId, "HttpData-PULL")
                 .thenWaitForDataFlowStartMessage()
                 .expectDataFlowSuspendMessage()
-                .sendTransferSuspensionMessage()
+                .sendTransferSuspensionMessage(tckParticipantId)
                 .thenWaitForSuspendMessage()
                 .expectDataFlowTerminateMessage()
-                .sendTransferTerminationMessage()
+                .sendTransferTerminationMessage(tckParticipantId)
                 .thenWaitForTerminateMessage()
                 .execute();
     }
@@ -183,12 +186,12 @@ public class ControlPlaneProviderSignalingTest {
     public void cp_p_03_01() {
         signalingPipeline
                 .expectDataFlowStartMessageAsync()
-                .sendTransferRequestMessage(agreementId, "HttpData-PULL")
+                .sendTransferRequestMessage(tckParticipantId, agreementId, "HttpData-PULL")
                 .thenWaitForDataFlowStartMessage()
                 .thenSendStartedCallback()
-                .thenWaitForTransferToBeInState("STARTED")
+                .thenWaitForTransferToBeInState("STARTED", tckParticipantId)
                 .expectDataFlowCompletedMessage()
-                .sendTransferCompletionMessage()
+                .sendTransferCompletionMessage(tckParticipantId)
                 .thenWaitForCompletedMessage()
                 .execute();
     }
