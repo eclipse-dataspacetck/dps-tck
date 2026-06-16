@@ -107,5 +107,5 @@ tasks.withType<ShadowJar> {
 }
 
 application {
-    mainClass.set("org.eclipse.dataspacetck.dps.controlplane.suite.DpsTckSuite")
+    mainClass.set("org.eclipse.dataspacetck.dps.DpsTckSuite")
 }
