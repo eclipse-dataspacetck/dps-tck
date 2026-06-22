@@ -14,13 +14,13 @@
 
 package org.eclipse.dataspacetck.dps.system.connector;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import org.eclipse.dataspacetck.core.spi.boot.Monitor;
 import org.eclipse.dataspacetck.dps.system.client.DataPlaneClient.DataFlowResult;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.Map;
@@ -132,11 +132,7 @@ public class LocalDataPlaneConnector {
     }
 
     private String serialize(Object object) {
-        try {
-            return MAPPER.writeValueAsString(object);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to serialize object", e);
-        }
+        return MAPPER.writeValueAsString(object);
     }
 
     private CompletableFuture<Void> sendAsync(String url, String body, String description) {

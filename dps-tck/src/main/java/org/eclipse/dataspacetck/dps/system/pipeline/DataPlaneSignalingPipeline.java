@@ -14,17 +14,16 @@
 
 package org.eclipse.dataspacetck.dps.system.pipeline;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.networknt.schema.Error;
 import org.eclipse.dataspacetck.core.api.pipeline.AbstractAsyncPipeline;
 import org.eclipse.dataspacetck.core.api.system.CallbackEndpoint;
 import org.eclipse.dataspacetck.core.api.system.HandlerResponse;
 import org.eclipse.dataspacetck.core.spi.boot.Monitor;
 import org.eclipse.dataspacetck.dps.system.client.DataPlaneClient;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
@@ -258,7 +257,7 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
                 return new DpsDeserializationResult(null, errors);
             }
             return new DpsDeserializationResult(mapper.convertValue(node, Map.class), null);
-        } catch (IOException e) {
+        } catch (JacksonException e) {
             var error = Error.builder().message("Failed to parse %s: %s".formatted(message.name(), e.getMessage())).build();
             return new DpsDeserializationResult(null, List.of(error));
         }
@@ -267,7 +266,7 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
     private HandlerResponse badRequest(List<Error> validationErrors) {
         try {
             return new HandlerResponse(400, "Error evaluating body: " + mapper.writeValueAsString(validationErrors));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return new HandlerResponse(500, "Unexpected exception: " + e.getMessage());
         }
     }
