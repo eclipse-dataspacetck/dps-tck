@@ -55,6 +55,7 @@ public class DataPlaneProviderSignalingPushTest {
     protected String transferType = "http-push";
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_P_PUSH:01-01: Verify DataFlowStartMessage with DataAddress is handled")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (provider control plane)
@@ -72,6 +73,7 @@ public class DataPlaneProviderSignalingPushTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_P_PUSH:01-02: Verify DataFlowStartMessage with DataAddress is handled and terminate notification is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (provider control plane)
@@ -93,6 +95,7 @@ public class DataPlaneProviderSignalingPushTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_P_PUSH:02-01: Verify DataFlowSuspendMessage and DataFlowResumeMessage are handled")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (provider control plane)
@@ -116,6 +119,7 @@ public class DataPlaneProviderSignalingPushTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_P_PUSH:02-02: Verify DataFlowSuspendMessage is handled and terminate notification is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (provider control plane)
@@ -139,6 +143,7 @@ public class DataPlaneProviderSignalingPushTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_P_PUSH:03-01: Verify data plane sends /dataflow/completed callback after push transfer is done")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (provider control plane)
@@ -160,6 +165,7 @@ public class DataPlaneProviderSignalingPushTest {
     }
 
     @MandatoryTest
+    @Tag("async")
     @DisplayName("DP_P_PUSH:04-01: Verify async DataFlowStartMessage: data plane responds 202+STARTING, sends /dataflow/started callback")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (provider control plane)

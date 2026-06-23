@@ -51,6 +51,7 @@ public class DataPlaneProviderSignalingPullTest {
     protected String transferType = "http-pull";
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_P_PULL:01-01: Verify DataFlowStartMessage is handled and completed notification is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (provider control plane)
@@ -72,6 +73,7 @@ public class DataPlaneProviderSignalingPullTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_P_PULL:01-02: Verify DataFlowStartMessage is handled and terminate notification is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (provider control plane)
@@ -93,6 +95,7 @@ public class DataPlaneProviderSignalingPullTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_P_PULL:02-01: Verify DataFlowSuspendMessage and DataFlowResumeMessage are handled and completed notification is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (provider control plane)
@@ -116,6 +119,7 @@ public class DataPlaneProviderSignalingPullTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_P_PULL:02-02: Verify DataFlowSuspendMessage is handled and terminate notification is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (provider control plane)
@@ -139,6 +143,7 @@ public class DataPlaneProviderSignalingPullTest {
     }
 
     @MandatoryTest
+    @Tag("async")
     @DisplayName("DP_P_PULL:04-01: Verify async DataFlowStartMessage: data plane responds 202+STARTING, sends /dataflow/started callback, and transfer completes")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (provider control plane)
