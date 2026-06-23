@@ -54,6 +54,7 @@ public class DataPlaneConsumerSignalingPushTest {
     protected String transferType = "http-push";
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_C_PUSH:01-01: Verify DataFlowPrepareMessage is handled and a DataAddress is returned, then started notification is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
@@ -74,6 +75,7 @@ public class DataPlaneConsumerSignalingPushTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_C_PUSH:01-02: Verify DataFlowPrepareMessage is handled and terminate message is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
@@ -97,6 +99,7 @@ public class DataPlaneConsumerSignalingPushTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_C_PUSH:02-01: Verify DataFlowSuspendMessage and DataFlowResumeMessage are handled")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
@@ -124,6 +127,7 @@ public class DataPlaneConsumerSignalingPushTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_C_PUSH:02-02: Verify DataFlowSuspendMessage is handled and terminate notification is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
@@ -151,6 +155,7 @@ public class DataPlaneConsumerSignalingPushTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_C_PUSH:03-01: Verify data plane transitions to COMPLETED after completed notification is received")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
@@ -175,6 +180,7 @@ public class DataPlaneConsumerSignalingPushTest {
     }
 
     @MandatoryTest
+    @Tag("async")
     @DisplayName("DP_C_PUSH:04-01: Verify async DataFlowPrepareMessage: data plane responds 202+PREPARING, sends /dataflow/prepared callback with DataAddress")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)

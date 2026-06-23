@@ -14,7 +14,7 @@ Tests are organized by scenario identifier (e.g. `CP_C:01-01`, `CP_P:02-01`) and
 
 ### JUnit mode
 
-The recommended way to run the TCK against a JVM-based control plane is to embed it in a JUnit test. Add the following dependency to your test module:
+The recommended way to run the TCK against a JVM-based control/data plane is to embed it in a JUnit test. Add the following dependency to your test module:
 
 ```kotlin
 testImplementation("org.eclipse.dataspacetck.dps:dps-tck:<version>")

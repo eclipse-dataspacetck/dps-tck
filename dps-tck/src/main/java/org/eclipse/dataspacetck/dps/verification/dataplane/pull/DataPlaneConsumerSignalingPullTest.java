@@ -51,6 +51,7 @@ public class DataPlaneConsumerSignalingPullTest {
     protected String transferType = "http-pull";
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_C_PULL:01-01: Verify DataFlowPrepareMessage is handled and started notification is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
@@ -71,6 +72,7 @@ public class DataPlaneConsumerSignalingPullTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_C_PULL:01-02: Verify DataFlowPrepareMessage is handled and terminate message is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
@@ -94,6 +96,7 @@ public class DataPlaneConsumerSignalingPullTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_C_PULL:02-01: Verify DataFlowSuspendMessage and DataFlowResumeMessage are handled and completed notification is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
@@ -121,6 +124,7 @@ public class DataPlaneConsumerSignalingPullTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_C_PULL:02-02: Verify DataFlowSuspendMessage is handled and terminate notification is accepted")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
@@ -147,6 +151,7 @@ public class DataPlaneConsumerSignalingPullTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("DP_C_PULL:03-01: Verify data plane sends /dataflow/completed callback after wire transfer is done")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)
@@ -170,6 +175,7 @@ public class DataPlaneConsumerSignalingPullTest {
     }
 
     @MandatoryTest
+    @Tag("async")
     @DisplayName("DP_C_PULL:04-01: Verify async DataFlowPrepareMessage: data plane responds 202+PREPARING, sends /dataflow/prepared callback, and transfer completes")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer control plane)

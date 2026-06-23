@@ -60,6 +60,7 @@ public class ControlPlaneProviderSignalingTest {
     protected String tckParticipantId = "consumerId";
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("CP_P:01-01: Verify DataFlowStartMessage is dispatched when a transfer request is received and completed notification is sent to the data plane")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer CP + provider data plane)
@@ -83,6 +84,7 @@ public class ControlPlaneProviderSignalingTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("CP_P:01-02: Verify DataFlowStartMessage is dispatched when a transfer request is received and terminate notification is sent to the data plane")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer CP + provider data plane)
@@ -106,6 +108,7 @@ public class ControlPlaneProviderSignalingTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("CP_P:02-01: Verify DataFlowSuspendMessage and DataFlowResumeMessage are dispatched when transfer is suspended and resumed, and completed notification is sent")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer CP + provider data plane)
@@ -141,6 +144,7 @@ public class ControlPlaneProviderSignalingTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("CP_P:02-02: Verify DataFlowSuspendMessage is dispatched when transfer is suspended and terminate notification is sent")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer CP + provider data plane)
@@ -170,6 +174,7 @@ public class ControlPlaneProviderSignalingTest {
     }
 
     @MandatoryTest
+    @Tag("async")
     @DisplayName("CP_P:03-01: Verify async DataFlowStartMessage: data plane responds 202+STARTING, sends /dataflow/started callback, and transfer completes")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer CP + provider data plane)

@@ -61,6 +61,7 @@ public class ControlPlaneConsumerSignalingTest {
     protected String tckParticipantId = "providerId";
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("CP_C:01-01: Verify DataFlowPrepareMessage is dispatched and completed notification is sent to the data plane")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer data plane + provider CP)
@@ -96,6 +97,7 @@ public class ControlPlaneConsumerSignalingTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("CP_C:01-02: Verify DataFlowPrepareMessage is dispatched and terminate notification is sent to the data plane")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer data plane + provider CP)
@@ -131,6 +133,7 @@ public class ControlPlaneConsumerSignalingTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("CP_C:02-01: Verify DataFlowSuspendMessage and DataFlowResumeMessage are dispatched to the data plane and completed notification is sent")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer data plane + provider CP)
@@ -178,6 +181,7 @@ public class ControlPlaneConsumerSignalingTest {
     }
 
     @MandatoryTest
+    @Tag("sync")
     @DisplayName("CP_C:02-02: Verify DataFlowSuspendMessage is dispatched to the data plane and terminate notification is sent")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer data plane + provider CP)
@@ -219,6 +223,7 @@ public class ControlPlaneConsumerSignalingTest {
     }
 
     @MandatoryTest
+    @Tag("async")
     @DisplayName("CP_C:03-01: Verify async DataFlowPrepareMessage is dispatched: data plane responds 202+PREPARING, sends /dataflow/prepared callback, and transfer completes")
     @TestSequenceDiagram("""
             participant TCK as Technology Compatibility Kit (consumer data plane + provider CP)
