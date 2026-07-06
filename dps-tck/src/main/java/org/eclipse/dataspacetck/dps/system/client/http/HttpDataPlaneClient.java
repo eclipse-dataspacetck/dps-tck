@@ -48,7 +48,7 @@ public class HttpDataPlaneClient implements DataPlaneClient {
     }
 
     @Override
-    public DataFlowResult prepare(boolean async, String callbackAddress, String processId, String agreementId, String datasetId, String transferType) {
+    public DataFlowResult prepare(boolean async, String processId, String agreementId, String datasetId, String profile) {
         try {
             var body = mapper.writeValueAsString(Map.of(
                     "messageId", UUID.randomUUID().toString(),
@@ -58,8 +58,7 @@ public class HttpDataPlaneClient implements DataPlaneClient {
                     "processId", processId,
                     "agreementId", agreementId,
                     "datasetId", datasetId,
-                    "callbackAddress", callbackAddress,
-                    "transferType", transferType,
+                    "profile", profile,
                     "claims", Map.of()
             ));
             monitor.debug("HTTP DP: sending DataFlowPrepareMessage for processId=" + processId);
@@ -71,7 +70,7 @@ public class HttpDataPlaneClient implements DataPlaneClient {
     }
 
     @Override
-    public DataFlowResult start(boolean async, String callbackAddress, String processId, String agreementId, String datasetId, String transferType) {
+    public DataFlowResult start(boolean async, String processId, String agreementId, String datasetId, String profile) {
         try {
             var body = mapper.writeValueAsString(Map.of(
                     "messageId", UUID.randomUUID().toString(),
@@ -81,8 +80,7 @@ public class HttpDataPlaneClient implements DataPlaneClient {
                     "processId", processId,
                     "agreementId", agreementId,
                     "datasetId", datasetId,
-                    "callbackAddress", callbackAddress,
-                    "transferType", transferType,
+                    "profile", profile,
                     "claims", Map.of()
             ));
             monitor.debug("HTTP DP: sending DataFlowStartMessage for processId=" + processId);
@@ -94,7 +92,7 @@ public class HttpDataPlaneClient implements DataPlaneClient {
     }
 
     @Override
-    public DataFlowResult startWithDataAddress(boolean async, String callbackAddress, String processId, String agreementId, String datasetId, String transferType, Map<String, Object> dataAddress) {
+    public DataFlowResult startWithDataAddress(boolean async, String processId, String agreementId, String datasetId, String profile, Map<String, Object> dataAddress) {
         try {
             var messageFields = new java.util.HashMap<String, Object>();
             messageFields.put("messageId", UUID.randomUUID().toString());
@@ -104,8 +102,7 @@ public class HttpDataPlaneClient implements DataPlaneClient {
             messageFields.put("processId", processId);
             messageFields.put("agreementId", agreementId);
             messageFields.put("datasetId", datasetId);
-            messageFields.put("callbackAddress", callbackAddress);
-            messageFields.put("transferType", transferType);
+            messageFields.put("profile", profile);
             messageFields.put("claims", Map.of());
             messageFields.put("dataAddress", dataAddress);
             var body = mapper.writeValueAsString(messageFields);
@@ -174,7 +171,7 @@ public class HttpDataPlaneClient implements DataPlaneClient {
     }
 
     @Override
-    public void sendCompletedCallback(String callbackAddress, String processId, String dataFlowId) {
+    public void sendCompletedCallback(String processId, String dataFlowId) {
         // the real data plane sends this callback autonomously; nothing to trigger over HTTP
     }
 

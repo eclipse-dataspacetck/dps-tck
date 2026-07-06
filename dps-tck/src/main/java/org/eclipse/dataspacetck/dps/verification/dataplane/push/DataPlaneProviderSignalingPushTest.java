@@ -52,7 +52,7 @@ public class DataPlaneProviderSignalingPushTest {
     protected String datasetId = randomUUID().toString();
 
     @ConfigParam
-    protected String transferType = "http-push";
+    protected String profile = "http-push";
 
     @MandatoryTest
     @Tag("sync")
@@ -66,7 +66,7 @@ public class DataPlaneProviderSignalingPushTest {
             """)
     public void dp_p_push_01_01() {
         signalingPipeline
-                .sendDataFlowStartMessageWithDataAddress(agreementId, datasetId, transferType)
+                .sendDataFlowStartMessageWithDataAddress(agreementId, datasetId, profile)
                 .expectReceivedDataAddressToBeNull()
                 .thenWaitForDataFlowToBeInState("STARTED")
                 .execute();
@@ -86,7 +86,7 @@ public class DataPlaneProviderSignalingPushTest {
             """)
     public void dp_p_push_01_02() {
         signalingPipeline
-                .sendDataFlowStartMessageWithDataAddress(agreementId, datasetId, transferType)
+                .sendDataFlowStartMessageWithDataAddress(agreementId, datasetId, profile)
                 .expectReceivedDataAddressToBeNull()
                 .thenWaitForDataFlowToBeInState("STARTED")
                 .sendDataFlowTerminateMessage()
@@ -110,7 +110,7 @@ public class DataPlaneProviderSignalingPushTest {
             """)
     public void dp_p_push_02_01() {
         signalingPipeline
-                .sendDataFlowStartMessageWithDataAddress(agreementId, datasetId, transferType)
+                .sendDataFlowStartMessageWithDataAddress(agreementId, datasetId, profile)
                 .sendDataFlowSuspendMessage()
                 .thenWaitForDataFlowToBeInState("SUSPENDED")
                 .sendDataFlowResumeMessage()
@@ -134,7 +134,7 @@ public class DataPlaneProviderSignalingPushTest {
             """)
     public void dp_p_push_02_02() {
         signalingPipeline
-                .sendDataFlowStartMessageWithDataAddress(agreementId, datasetId, transferType)
+                .sendDataFlowStartMessageWithDataAddress(agreementId, datasetId, profile)
                 .sendDataFlowSuspendMessage()
                 .thenWaitForDataFlowToBeInState("SUSPENDED")
                 .sendDataFlowTerminateMessage()
@@ -156,7 +156,7 @@ public class DataPlaneProviderSignalingPushTest {
             """)
     public void dp_p_push_03_01() {
         signalingPipeline
-                .sendDataFlowStartMessageWithDataAddress(agreementId, datasetId, transferType)
+                .sendDataFlowStartMessageWithDataAddress(agreementId, datasetId, profile)
                 .thenWaitForDataFlowToBeInState("STARTED")
                 .expectCompletedCallback()
                 .triggerDataPlaneCompletedCallback()
@@ -179,7 +179,7 @@ public class DataPlaneProviderSignalingPushTest {
     public void dp_p_push_04_01() {
         signalingPipeline
                 .expectStartedCallback()
-                .sendDataFlowStartMessageWithDataAddressAsync(agreementId, datasetId, transferType)
+                .sendDataFlowStartMessageWithDataAddressAsync(agreementId, datasetId, profile)
                 .thenWaitForStartedCallback()
                 .thenWaitForDataFlowToBeInState("STARTED")
                 .execute();

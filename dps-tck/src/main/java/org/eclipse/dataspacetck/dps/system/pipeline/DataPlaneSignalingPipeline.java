@@ -62,33 +62,33 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
         this.mapper = mapper;
     }
 
-    public DataPlaneSignalingPipeline sendDataFlowPrepareMessage(String agreementId, String datasetId, String transferType) {
-        stages.add(() -> sendDataFlowPrepareMessage(false, agreementId, datasetId, transferType));
+    public DataPlaneSignalingPipeline sendDataFlowPrepareMessage(String agreementId, String datasetId, String profile) {
+        stages.add(() -> sendDataFlowPrepareMessage(false, agreementId, datasetId, profile));
         return this;
     }
 
-    public DataPlaneSignalingPipeline sendDataFlowPrepareMessageAsync(String agreementId, String datasetId, String transferType) {
-        stages.add(() -> sendDataFlowPrepareMessage(true, agreementId, datasetId, transferType));
+    public DataPlaneSignalingPipeline sendDataFlowPrepareMessageAsync(String agreementId, String datasetId, String profile) {
+        stages.add(() -> sendDataFlowPrepareMessage(true, agreementId, datasetId, profile));
         return this;
     }
 
-    public DataPlaneSignalingPipeline sendDataFlowStartMessage(String agreementId, String datasetId, String transferType) {
-        stages.add(() -> sendDataFlowStartMessage(false, agreementId, datasetId, transferType));
+    public DataPlaneSignalingPipeline sendDataFlowStartMessage(String agreementId, String datasetId, String profile) {
+        stages.add(() -> sendDataFlowStartMessage(false, agreementId, datasetId, profile));
         return this;
     }
 
-    public DataPlaneSignalingPipeline sendDataFlowStartMessageAsync(String agreementId, String datasetId, String transferType) {
-        stages.add(() -> sendDataFlowStartMessage(true, agreementId, datasetId, transferType));
+    public DataPlaneSignalingPipeline sendDataFlowStartMessageAsync(String agreementId, String datasetId, String profile) {
+        stages.add(() -> sendDataFlowStartMessage(true, agreementId, datasetId, profile));
         return this;
     }
 
-    public DataPlaneSignalingPipeline sendDataFlowStartMessageWithDataAddress(String agreementId, String datasetId, String transferType) {
-        stages.add(() -> sendDataFlowStartMessageWithDataAddress(false, agreementId, datasetId, transferType));
+    public DataPlaneSignalingPipeline sendDataFlowStartMessageWithDataAddress(String agreementId, String datasetId, String profile) {
+        stages.add(() -> sendDataFlowStartMessageWithDataAddress(false, agreementId, datasetId, profile));
         return this;
     }
 
-    public DataPlaneSignalingPipeline sendDataFlowStartMessageWithDataAddressAsync(String agreementId, String datasetId, String transferType) {
-        stages.add(() -> sendDataFlowStartMessageWithDataAddress(true, agreementId, datasetId, transferType));
+    public DataPlaneSignalingPipeline sendDataFlowStartMessageWithDataAddressAsync(String agreementId, String datasetId, String profile) {
+        stages.add(() -> sendDataFlowStartMessageWithDataAddress(true, agreementId, datasetId, profile));
         return this;
     }
 
@@ -148,7 +148,7 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
             var dataFlowId = capturedDataFlow.get().dataFlowId();
             var processId = capturedProcessId.get();
             monitor.debug("TCK CP: triggering data plane completed callback for dataFlowId=" + dataFlowId);
-            dataPlaneClient.sendCompletedCallback(endpoint.getAddress(), processId, dataFlowId);
+            dataPlaneClient.sendCompletedCallback(processId, dataFlowId);
         });
         return this;
     }
@@ -180,11 +180,11 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
         return thenWait("COMPLETED callback from data plane", completedCallbackReceived::get);
     }
 
-    private void sendDataFlowPrepareMessage(boolean async, String agreementId, String datasetId, String transferType) {
+    private void sendDataFlowPrepareMessage(boolean async, String agreementId, String datasetId, String profile) {
         var processId = UUID.randomUUID().toString();
         capturedProcessId.set(processId);
         monitor.debug("TCK CP: sending DataFlowPrepareMessage for processId=" + processId);
-        var result = dataPlaneClient.prepare(async, endpoint.getAddress(), processId, agreementId, datasetId, transferType);
+        var result = dataPlaneClient.prepare(async, processId, agreementId, datasetId, profile);
         if (result == null || result.dataFlowId() == null) {
             throw new RuntimeException("DataFlowPrepareMessage response missing dataFlowId");
         }
@@ -196,11 +196,11 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
         monitor.debug("TCK CP: DataFlowPrepareMessage response: dataFlowId=" + result.dataFlowId() + ", state=" + result.state());
     }
 
-    private void sendDataFlowStartMessage(boolean async, String agreementId, String datasetId, String transferType) {
+    private void sendDataFlowStartMessage(boolean async, String agreementId, String datasetId, String profile) {
         var processId = UUID.randomUUID().toString();
         capturedProcessId.set(processId);
         monitor.debug("TCK CP: sending DataFlowStartMessage for processId=" + processId);
-        var result = dataPlaneClient.start(async, endpoint.getAddress(), processId, agreementId, datasetId, transferType);
+        var result = dataPlaneClient.start(async, processId, agreementId, datasetId, profile);
         if (result == null || result.dataFlowId() == null) {
             throw new RuntimeException("DataFlowStartMessage response missing dataFlowId");
         }
@@ -212,12 +212,12 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
         monitor.debug("TCK CP: DataFlowStartMessage response: dataFlowId=" + result.dataFlowId() + ", state=" + result.state());
     }
 
-    private void sendDataFlowStartMessageWithDataAddress(boolean async, String agreementId, String datasetId, String transferType) {
+    private void sendDataFlowStartMessageWithDataAddress(boolean async, String agreementId, String datasetId, String profile) {
         var processId = UUID.randomUUID().toString();
         capturedProcessId.set(processId);
         monitor.debug("TCK CP: sending DataFlowStartMessage (with DataAddress) for processId=" + processId);
         Map<String, Object> dataAddress = Map.of("endpointType", "https://w3id.org/idsa/v4.1/HTTP", "endpoint", endpoint.getAddress());
-        var result = dataPlaneClient.startWithDataAddress(async, endpoint.getAddress(), processId, agreementId, datasetId, transferType, dataAddress);
+        var result = dataPlaneClient.startWithDataAddress(async, processId, agreementId, datasetId, profile, dataAddress);
         if (result == null || result.dataFlowId() == null) {
             throw new RuntimeException("DataFlowStartMessage response missing dataFlowId");
         }

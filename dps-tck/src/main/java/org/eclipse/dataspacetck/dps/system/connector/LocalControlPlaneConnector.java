@@ -178,7 +178,7 @@ public class LocalControlPlaneConnector {
                 "agreementId", agreementId,
                 "datasetId", UUID.randomUUID().toString(),
                 "callbackAddress", Optional.ofNullable(dataPlaneBaseUrl.get()).orElse("local://callback"),
-                "transferType", "HttpData-PULL",
+                "profile", "HttpData-PULL",
                 "claims", Map.of()
         );
 
@@ -197,7 +197,7 @@ public class LocalControlPlaneConnector {
                     "processId", processId,
                     "agreementId", agreementId,
                     "datasetId", datasetId,
-                    "transferType", "HttpData-PULL",
+                    "profile", "HttpData-PULL",
                     "claims", Map.of()
             );
             post(dataPlaneUrl + "/dataflows/prepare", serialize(message));

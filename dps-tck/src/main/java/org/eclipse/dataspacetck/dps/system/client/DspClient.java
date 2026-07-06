@@ -24,7 +24,7 @@ public interface DspClient {
 
     void sendTransferTerminationMessage(String senderId, String callbackAddress, String processId);
 
-    TransferRequestResult sendTransferRequestMessage(String senderId, String address, String agreementId, String transferType);
+    TransferRequestResult sendTransferRequestMessage(String senderId, String address, String agreementId, String profile);
 
     void sendTransferSuspensionMessage(String senderId, String callbackAddress, String processId);
 

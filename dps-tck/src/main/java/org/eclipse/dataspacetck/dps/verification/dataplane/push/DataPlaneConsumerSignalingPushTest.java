@@ -51,7 +51,7 @@ public class DataPlaneConsumerSignalingPushTest {
     protected String datasetId = randomUUID().toString();
 
     @ConfigParam
-    protected String transferType = "http-push";
+    protected String profile = "http-push";
 
     @MandatoryTest
     @Tag("sync")
@@ -67,7 +67,7 @@ public class DataPlaneConsumerSignalingPushTest {
             """)
     public void dp_c_push_01_01() {
         signalingPipeline
-                .sendDataFlowPrepareMessage(agreementId, datasetId, transferType)
+                .sendDataFlowPrepareMessage(agreementId, datasetId, profile)
                 .expectReceivedDataAddressToBeNonNull()
                 .sendDataFlowStartedNotification()
                 .thenWaitForDataFlowToBeInState("STARTED")
@@ -90,7 +90,7 @@ public class DataPlaneConsumerSignalingPushTest {
             """)
     public void dp_c_push_01_02() {
         signalingPipeline
-                .sendDataFlowPrepareMessage(agreementId, datasetId, transferType)
+                .sendDataFlowPrepareMessage(agreementId, datasetId, profile)
                 .expectReceivedDataAddressToBeNonNull()
                 .sendDataFlowStartedNotification()
                 .sendDataFlowTerminateMessage()
@@ -116,7 +116,7 @@ public class DataPlaneConsumerSignalingPushTest {
             """)
     public void dp_c_push_02_01() {
         signalingPipeline
-                .sendDataFlowPrepareMessage(agreementId, datasetId, transferType)
+                .sendDataFlowPrepareMessage(agreementId, datasetId, profile)
                 .expectReceivedDataAddressToBeNonNull()
                 .sendDataFlowStartedNotification()
                 .sendDataFlowSuspendMessage()
@@ -144,7 +144,7 @@ public class DataPlaneConsumerSignalingPushTest {
             """)
     public void dp_c_push_02_02() {
         signalingPipeline
-                .sendDataFlowPrepareMessage(agreementId, datasetId, transferType)
+                .sendDataFlowPrepareMessage(agreementId, datasetId, profile)
                 .expectReceivedDataAddressToBeNonNull()
                 .sendDataFlowStartedNotification()
                 .sendDataFlowSuspendMessage()
@@ -170,7 +170,7 @@ public class DataPlaneConsumerSignalingPushTest {
             """)
     public void dp_c_push_03_01() {
         signalingPipeline
-                .sendDataFlowPrepareMessage(agreementId, datasetId, transferType)
+                .sendDataFlowPrepareMessage(agreementId, datasetId, profile)
                 .expectReceivedDataAddressToBeNonNull()
                 .sendDataFlowStartedNotification()
                 .thenWaitForDataFlowToBeInState("STARTED")
@@ -194,7 +194,7 @@ public class DataPlaneConsumerSignalingPushTest {
     public void dp_c_push_04_01() {
         signalingPipeline
                 .expectPreparedCallback()
-                .sendDataFlowPrepareMessageAsync(agreementId, datasetId, transferType)
+                .sendDataFlowPrepareMessageAsync(agreementId, datasetId, profile)
                 .thenWaitForPreparedCallback()
                 .thenWaitForDataFlowToBeInState("PREPARED")
                 .execute();

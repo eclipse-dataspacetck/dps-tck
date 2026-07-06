@@ -70,7 +70,6 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
     private final AtomicReference<CounterParty> lastCounterParty = new AtomicReference<>();
     private final AtomicReference<String> capturedProcessId = new AtomicReference<>();
     private final AtomicReference<String> lastReceivedDataFlowId = new AtomicReference<>();
-    private final AtomicReference<String> lastReceivedCallbackAddress = new AtomicReference<>();
     private final ObjectMapper mapper;
 
     public ControlPlaneSignalingPipeline(ControlPlaneClient controlPlaneClient, DspClient dspClient,
@@ -142,13 +141,12 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
     public ControlPlaneSignalingPipeline thenSendPreparedCallback() {
         stages.add(() -> {
             var dataFlowId = lastReceivedDataFlowId.get();
-            var callbackAddress = lastReceivedCallbackAddress.get();
             if (dataFlowId == null) {
                 throw new RuntimeException("Cannot send PREPARED callback: no dataFlowId received from async prepare response");
             }
             var processId = capturedProcessId.get();
-            monitor.debug("TCK: sending PREPARED callback for dataFlowId=" + dataFlowId + " to " + callbackAddress);
-            controlPlaneClient.notifyPrepared(callbackAddress, processId, dataFlowId);
+            monitor.debug("TCK: sending PREPARED callback for dataFlowId=" + dataFlowId + " to control-plane");
+            controlPlaneClient.notifyPrepared(processId, dataFlowId);
         });
         return this;
     }
@@ -156,13 +154,12 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
     public ControlPlaneSignalingPipeline thenSendStartedCallback() {
         stages.add(() -> {
             var dataFlowId = lastReceivedDataFlowId.get();
-            var callbackAddress = lastReceivedCallbackAddress.get();
             if (dataFlowId == null) {
                 throw new RuntimeException("Cannot send STARTED callback: no dataFlowId received from async start response");
             }
             var processId = capturedProcessId.get();
-            monitor.debug("TCK: sending STARTED callback for dataFlowId=" + dataFlowId + " to " + callbackAddress);
-            controlPlaneClient.notifyStarted(callbackAddress, processId, dataFlowId);
+            monitor.debug("TCK: sending STARTED callback for dataFlowId=" + dataFlowId + " to control plane");
+            controlPlaneClient.notifyStarted(processId, dataFlowId);
         });
         return this;
     }
@@ -224,10 +221,10 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         });
     }
 
-    public ControlPlaneSignalingPipeline sendTransferRequestMessage(String senderId, String agreementId, String transferType) {
+    public ControlPlaneSignalingPipeline sendTransferRequestMessage(String senderId, String agreementId, String profile) {
         stages.add(() -> {
             monitor.debug("Send DSP TransferRequestMessage");
-            var requestResult = dspClient.sendTransferRequestMessage(senderId, endpoint.getAddress(), agreementId, transferType);
+            var requestResult = dspClient.sendTransferRequestMessage(senderId, endpoint.getAddress(), agreementId, profile);
             lastCounterParty.set(new CounterParty(requestResult.processId(), requestResult.address()));
         });
         return this;
@@ -316,10 +313,8 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                     }
 
                     var dataFlowId = UUID.randomUUID().toString();
-                    var callbackAddress = (String) message.get("callbackAddress");
                     var processId = (String) message.get("processId");
                     lastReceivedDataFlowId.set(dataFlowId);
-                    lastReceivedCallbackAddress.set(callbackAddress);
                     capturedProcessId.set(processId);
                     lastDpsReceivedMessage.set(new ReceivedDpsMessage(path, dspMessage, message));
                     monitor.debug("Received async call to %s endpoint. Responding 202/%s, dataFlowId=%s".formatted(path, transitionState, dataFlowId));

@@ -44,6 +44,7 @@ public class DpsSystemLauncher implements SystemLauncher {
     private static final String LOCAL_CONNECTOR_CONFIG = TCK_PREFIX + ".dps.local.connector";
     private static final String CONTROL_PLANE_WEBHOOK_URL_CONFIG = TCK_PREFIX + ".dps.controlplane.webhook.url";
     private static final String CONTROL_PLANE_PROTOCOL_URL_CONFIG = TCK_PREFIX + ".dps.controlplane.protocol.url";
+    private static final String CONTROL_PLANE_SIGNALING_URL_CONFIG = TCK_PREFIX + ".dps.controlplane.signaling.url";
     private static final String DATA_PLANE_URL_CONFIG = TCK_PREFIX + ".dps.dataplane.url";
     private static final String DATA_PLANE_AUTHORIZATION_CONFIG = TCK_PREFIX + ".dps.dataplane.authorization";
     private static final int DEFAULT_WAIT_SECONDS = 15;
@@ -51,6 +52,7 @@ public class DpsSystemLauncher implements SystemLauncher {
 
     private String controlPlaneWebhookUrl;
     private String controlPlaneProtocolUrl;
+    private String controlPlaneSignalingUrl;
     private String dataPlaneUrl;
     private String dataPlaneAuthorization;
     private long waitTime = DEFAULT_WAIT_SECONDS;
@@ -66,6 +68,7 @@ public class DpsSystemLauncher implements SystemLauncher {
         if (!useLocalConnector) {
             controlPlaneWebhookUrl = configuration.getPropertyAsString(CONTROL_PLANE_WEBHOOK_URL_CONFIG, null);
             controlPlaneProtocolUrl = configuration.getPropertyAsString(CONTROL_PLANE_PROTOCOL_URL_CONFIG, null);
+            controlPlaneSignalingUrl = configuration.getPropertyAsString(CONTROL_PLANE_SIGNALING_URL_CONFIG, null);
             dataPlaneUrl = configuration.getPropertyAsString(DATA_PLANE_URL_CONFIG, null);
             dataPlaneAuthorization = configuration.getPropertyAsString(DATA_PLANE_AUTHORIZATION_CONFIG, "dummy-authorization");
         }
@@ -98,7 +101,10 @@ public class DpsSystemLauncher implements SystemLauncher {
         if (controlPlaneProtocolUrl == null) {
             throw new RuntimeException("Required configuration not set: " + CONTROL_PLANE_PROTOCOL_URL_CONFIG);
         }
-        var controlPlaneClient = new HttpControlPlaneClient(controlPlaneWebhookUrl, monitor, mapper);
+        if (controlPlaneSignalingUrl == null) {
+            throw new RuntimeException("Required configuration not set: " + CONTROL_PLANE_SIGNALING_URL_CONFIG);
+        }
+        var controlPlaneClient = new HttpControlPlaneClient(controlPlaneWebhookUrl, controlPlaneSignalingUrl, monitor, mapper);
         var dspClient = new HttpDspClient(controlPlaneProtocolUrl, monitor, mapper);
         return new ControlPlaneSignalingPipeline(controlPlaneClient, dspClient, callbackEndpoint, monitor, waitTime, mapper);
     }
@@ -120,7 +126,7 @@ public class DpsSystemLauncher implements SystemLauncher {
 
     private @NonNull DataPlaneSignalingPipeline localDataPlanePipeline(CallbackEndpoint callbackEndpoint) {
         var connector = new LocalDataPlaneConnector(monitor);
-        var dataPlaneClient = new LocalDataPlaneClient(connector);
+        var dataPlaneClient = new LocalDataPlaneClient(connector, callbackEndpoint);
         return new DataPlaneSignalingPipeline(dataPlaneClient, callbackEndpoint, monitor, waitTime, mapper);
     }
 
