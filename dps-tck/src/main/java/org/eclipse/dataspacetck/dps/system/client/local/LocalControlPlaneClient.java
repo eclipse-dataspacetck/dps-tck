@@ -39,12 +39,12 @@ public class LocalControlPlaneClient implements ControlPlaneClient {
     }
 
     @Override
-    public void notifyPrepared(String callbackAddress, String processId, String dataFlowId) {
+    public void notifyPrepared(String processId, String dataFlowId) {
         connector.receivePreparedCallback(processId, dataFlowId);
     }
 
     @Override
-    public void notifyStarted(String callbackAddress, String processId, String dataFlowId) {
+    public void notifyStarted(String processId, String dataFlowId) {
         connector.receiveStartedCallback(processId, dataFlowId);
     }
 }

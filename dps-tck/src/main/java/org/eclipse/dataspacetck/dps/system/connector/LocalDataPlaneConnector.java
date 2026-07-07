@@ -50,7 +50,7 @@ public class LocalDataPlaneConnector {
         this.monitor = monitor;
     }
 
-    public DataFlowResult handlePrepare(String callbackAddress, String processId, boolean async, String transferType) {
+    public DataFlowResult handlePrepare(String callbackAddress, String processId, boolean async, String profile) {
         var dataFlowId = UUID.randomUUID().toString();
         if (async) {
             dataFlowStates.put(dataFlowId, "PREPARING");
@@ -67,12 +67,12 @@ public class LocalDataPlaneConnector {
         } else {
             dataFlowStates.put(dataFlowId, "PREPARED");
             monitor.debug("Local DP: handling sync prepare for processId=" + processId + ", dataFlowId=" + dataFlowId);
-            Map<String, Object> dataAddress = transferType.endsWith("-push") ? Map.of("key", "value") : null;
+            Map<String, Object> dataAddress = profile.endsWith("-push") ? Map.of("key", "value") : null;
             return new DataFlowResult(dataFlowId, "PREPARED", dataAddress);
         }
     }
 
-    public DataFlowResult handleStart(String callbackAddress, String processId, boolean asyncMode, String transferType) {
+    public DataFlowResult handleStart(String callbackAddress, String processId, boolean asyncMode, String profile) {
         var dataFlowId = UUID.randomUUID().toString();
         if (asyncMode) {
             dataFlowStates.put(dataFlowId, "STARTING");
@@ -89,7 +89,7 @@ public class LocalDataPlaneConnector {
         } else {
             dataFlowStates.put(dataFlowId, "STARTED");
             monitor.debug("Local DP: handling sync start for processId=" + processId + ", dataFlowId=" + dataFlowId);
-            Map<String, Object> dataAddress = transferType.endsWith("-pull") ? Map.of("key", "value") : null;
+            Map<String, Object> dataAddress = profile.endsWith("-pull") ? Map.of("key", "value") : null;
             return new DataFlowResult(dataFlowId, "STARTED", dataAddress);
         }
     }

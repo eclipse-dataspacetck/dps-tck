@@ -2,7 +2,7 @@
 
 Technology Compatibility Kit for the Dataplane Signaling Protocol (DPS). This project verifies that a control plane implementation correctly implements the DPS specification by executing a suite of compliance tests against it.
 
-Specs: https://eclipse-dataplane-signaling.github.io/dataplane-signaling/v1.0-RC2
+Specs: https://eclipse-dataplane-signaling.github.io/dataplane-signaling/v1.0-RC3
 
 ## Overview
 
@@ -38,6 +38,7 @@ public class DpsTckTest {
     // Ports where your control plane will listen
     private static final String WEBHOOK_URL = "http://localhost:9191/api/v1/dataflows";
     private static final String PROTOCOL_URL = "http://localhost:8282/api/v1/dsp";
+    private static final String SIGNALING_URL = "http://localhost:9191/api/v1/signaling";
 
     @Timeout(300)
     @Test
@@ -47,7 +48,8 @@ public class DpsTckTest {
         var result = TckRuntime.Builder.newInstance()
                 .properties(Map.of(
                         "dataspacetck.dps.controlplane.webhook.url", WEBHOOK_URL,
-                        "dataspacetck.dps.controlplane.protocol.url", PROTOCOL_URL
+                        "dataspacetck.dps.controlplane.protocol.url", PROTOCOL_URL,
+                        "dataspacetck.dps.controlplane.signaling.url", SIGNALING_URL
                 ))
                 .launcher(DpsSystemLauncher.class)
                 .addPackage("org.eclipse.dataspacetck.dps.verification.controlplane") // or .dataplane if you are testing a data-plane
@@ -88,8 +90,9 @@ In both cases, environment variables are also read: prefix `dataspacetck.` with 
 | Property                                     | Default                                     | Description                                                                                  |
 |----------------------------------------------|---------------------------------------------|----------------------------------------------------------------------------------------------|
 | `dataspacetck.test.package`                  | `org.eclipse.dataspacetck.dps.verification` | The test package to be executed (see [Test Coverage](#test-coverage) for details             |
-| `dataspacetck.dps.controlplane.webhook.url`  |                                             | Webhook URL the TCK uses to send signaling messages to the consumer control plane under test |
-| `dataspacetck.dps.controlplane.protocol.url` |                                             | DSP protocol endpoint of the provider control plane under test                               |
+| `dataspacetck.dps.controlplane.webhook.url`    |                                             | Webhook URL the TCK uses to send signaling messages to the consumer control plane under test |
+| `dataspacetck.dps.controlplane.protocol.url`   |                                             | DSP protocol endpoint of the provider control plane under test                               |
+| `dataspacetck.dps.controlplane.signaling.url`  |                                             | Signaling endpoint of the control plane under test (required)                                |
 | `dataspacetck.dps.dataplane.url`             |                                             | DPS endpoint of the data plane under test                                                    |
 | `dataspacetck.dps.dataplane.authorization`   | `dummy-authorization`                       | Authorization token sent in requests to the data plane                                       |
 | `dataspacetck.dps.default.wait`              | `15`                                        | Timeout in seconds to wait for expected messages                                             |

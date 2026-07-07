@@ -14,6 +14,7 @@
 
 package org.eclipse.dataspacetck.dps.system.client.local;
 
+import org.eclipse.dataspacetck.core.api.system.CallbackEndpoint;
 import org.eclipse.dataspacetck.dps.system.client.DataPlaneClient;
 import org.eclipse.dataspacetck.dps.system.connector.LocalDataPlaneConnector;
 
@@ -25,24 +26,26 @@ import java.util.Map;
 public class LocalDataPlaneClient implements DataPlaneClient {
 
     private final LocalDataPlaneConnector connector;
+    private final CallbackEndpoint callbackEndpoint;
 
-    public LocalDataPlaneClient(LocalDataPlaneConnector connector) {
+    public LocalDataPlaneClient(LocalDataPlaneConnector connector, CallbackEndpoint callbackEndpoint) {
         this.connector = connector;
+        this.callbackEndpoint = callbackEndpoint;
     }
 
     @Override
-    public DataFlowResult prepare(boolean async, String callbackAddress, String processId, String agreementId, String datasetId, String transferType) {
-        return connector.handlePrepare(callbackAddress, processId, async, transferType);
+    public DataFlowResult prepare(boolean async, String processId, String agreementId, String datasetId, String profile) {
+        return connector.handlePrepare(callbackEndpoint.getAddress(), processId, async, profile);
     }
 
     @Override
-    public DataFlowResult start(boolean async, String callbackAddress, String processId, String agreementId, String datasetId, String transferType) {
-        return connector.handleStart(callbackAddress, processId, async, transferType);
+    public DataFlowResult start(boolean async, String processId, String agreementId, String datasetId, String profile) {
+        return connector.handleStart(callbackEndpoint.getAddress(), processId, async, profile);
     }
 
     @Override
-    public DataFlowResult startWithDataAddress(boolean async, String callbackAddress, String processId, String agreementId, String datasetId, String transferType, Map<String, Object> dataAddress) {
-        return connector.handleStart(callbackAddress, processId, async, transferType);
+    public DataFlowResult startWithDataAddress(boolean async, String processId, String agreementId, String datasetId, String profile, Map<String, Object> dataAddress) {
+        return connector.handleStart(callbackEndpoint.getAddress(), processId, async, profile);
     }
 
     @Override
@@ -71,8 +74,8 @@ public class LocalDataPlaneClient implements DataPlaneClient {
     }
 
     @Override
-    public void sendCompletedCallback(String callbackAddress, String processId, String dataFlowId) {
-        connector.sendCompletedCallback(callbackAddress, processId, dataFlowId);
+    public void sendCompletedCallback(String processId, String dataFlowId) {
+        connector.sendCompletedCallback(callbackEndpoint.getAddress(), processId, dataFlowId);
     }
 
     @Override

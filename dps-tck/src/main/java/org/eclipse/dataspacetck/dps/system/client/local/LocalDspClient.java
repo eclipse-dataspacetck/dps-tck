@@ -50,7 +50,7 @@ public class LocalDspClient implements DspClient {
     }
 
     @Override
-    public TransferRequestResult sendTransferRequestMessage(String senderId, String address, String agreementId, String transferType) {
+    public TransferRequestResult sendTransferRequestMessage(String senderId, String address, String agreementId, String profile) {
         var providerPid = connector.receiveTransferRequestMessage(address, agreementId);
         return new TransferRequestResult(providerPid, null);
     }

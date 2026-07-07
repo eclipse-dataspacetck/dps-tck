@@ -48,7 +48,7 @@ public class DataPlaneProviderSignalingPullTest {
     protected String datasetId = randomUUID().toString();
 
     @ConfigParam
-    protected String transferType = "http-pull";
+    protected String profile = "http-pull";
 
     @MandatoryTest
     @Tag("sync")
@@ -64,7 +64,7 @@ public class DataPlaneProviderSignalingPullTest {
             """)
     public void dp_p_pull_01_01() {
         signalingPipeline
-                .sendDataFlowStartMessage(agreementId, datasetId, transferType)
+                .sendDataFlowStartMessage(agreementId, datasetId, profile)
                 .expectReceivedDataAddressToBeNonNull()
                 .thenWaitForDataFlowToBeInState("STARTED")
                 .sendDataFlowCompletedNotification()
@@ -86,7 +86,7 @@ public class DataPlaneProviderSignalingPullTest {
             """)
     public void dp_p_pull_01_02() {
         signalingPipeline
-                .sendDataFlowStartMessage(agreementId, datasetId, transferType)
+                .sendDataFlowStartMessage(agreementId, datasetId, profile)
                 .expectReceivedDataAddressToBeNonNull()
                 .thenWaitForDataFlowToBeInState("STARTED")
                 .sendDataFlowTerminateMessage()
@@ -110,7 +110,7 @@ public class DataPlaneProviderSignalingPullTest {
             """)
     public void dp_p_pull_02_01() {
         signalingPipeline
-                .sendDataFlowStartMessage(agreementId, datasetId, transferType)
+                .sendDataFlowStartMessage(agreementId, datasetId, profile)
                 .sendDataFlowSuspendMessage()
                 .thenWaitForDataFlowToBeInState("SUSPENDED")
                 .sendDataFlowResumeMessage()
@@ -134,7 +134,7 @@ public class DataPlaneProviderSignalingPullTest {
             """)
     public void dp_p_pull_02_02() {
         signalingPipeline
-                .sendDataFlowStartMessage(agreementId, datasetId, transferType)
+                .sendDataFlowStartMessage(agreementId, datasetId, profile)
                 .sendDataFlowSuspendMessage()
                 .thenWaitForDataFlowToBeInState("SUSPENDED")
                 .sendDataFlowTerminateMessage()
@@ -157,7 +157,7 @@ public class DataPlaneProviderSignalingPullTest {
     public void dp_p_pull_04_01() {
         signalingPipeline
                 .expectStartedCallback()
-                .sendDataFlowStartMessageAsync(agreementId, datasetId, transferType)
+                .sendDataFlowStartMessageAsync(agreementId, datasetId, profile)
                 .thenWaitForStartedCallback()
                 .thenWaitForDataFlowToBeInState("STARTED")
                 .execute();

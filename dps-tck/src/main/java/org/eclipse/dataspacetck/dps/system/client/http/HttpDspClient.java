@@ -85,14 +85,14 @@ public class HttpDspClient implements DspClient {
     }
 
     @Override
-    public TransferRequestResult sendTransferRequestMessage(String senderId, String address, String agreementId, String transferType) {
+    public TransferRequestResult sendTransferRequestMessage(String senderId, String address, String agreementId, String profile) {
         var requestBody = Map.of(
                 "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
                 "@type", "TransferRequestMessage",
                 "consumerPid", UUID.randomUUID().toString(),
                 "callbackAddress", address,
                 "agreementId", agreementId,
-                "format", transferType
+                "format", profile
         );
         var response = send(initialDspUrl + "/transfers/request", requestBody, senderId);
         var providerPid = response.get("providerPid").toString();

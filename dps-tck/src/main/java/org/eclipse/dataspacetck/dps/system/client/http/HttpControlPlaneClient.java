@@ -33,12 +33,14 @@ public class HttpControlPlaneClient implements ControlPlaneClient {
     private static final MediaType JSON = MediaType.get("application/json");
 
     private final String webhookUrl;
+    private final String signalingUrl;
     private final Monitor monitor;
     private final OkHttpClient httpClient;
     private final ObjectMapper mapper;
 
-    public HttpControlPlaneClient(String webhookUrl, Monitor monitor, ObjectMapper mapper) {
+    public HttpControlPlaneClient(String webhookUrl, String signalingUrl, Monitor monitor, ObjectMapper mapper) {
         this.webhookUrl = webhookUrl;
+        this.signalingUrl = signalingUrl;
         this.monitor = monitor;
         this.httpClient = new OkHttpClient();
         this.mapper = mapper;
@@ -55,13 +57,13 @@ public class HttpControlPlaneClient implements ControlPlaneClient {
     }
 
     @Override
-    public void notifyPrepared(String callbackAddress, String processId, String dataFlowId) {
-        sendStatusCallback(callbackAddress + "/transfers/" + processId + "/dataflow/prepared", dataFlowId, "PREPARED");
+    public void notifyPrepared(String processId, String dataFlowId) {
+        sendStatusCallback(signalingUrl + "/transfers/" + processId + "/dataflow/prepared", dataFlowId, "PREPARED");
     }
 
     @Override
-    public void notifyStarted(String callbackAddress, String processId, String dataFlowId) {
-        sendStatusCallback(callbackAddress + "/transfers/" + processId + "/dataflow/started", dataFlowId, "STARTED");
+    public void notifyStarted(String processId, String dataFlowId) {
+        sendStatusCallback(signalingUrl + "/transfers/" + processId + "/dataflow/started", dataFlowId, "STARTED");
     }
 
     private String triggerInternal(String agreementId, String datasetId, String dataPlaneUrl, boolean async) {
