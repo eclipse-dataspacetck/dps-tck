@@ -20,9 +20,12 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import org.eclipse.dataspacetck.core.spi.boot.Monitor;
 import org.eclipse.dataspacetck.dps.system.client.DataPlaneClient;
+import org.eclipse.dataspacetck.dps.system.crypto.RefreshTokenAuthenticator;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
@@ -32,19 +35,27 @@ import java.util.UUID;
 public class HttpDataPlaneClient implements DataPlaneClient {
 
     private static final MediaType JSON = MediaType.get("application/json");
+    private static final MediaType FORM = MediaType.get("application/x-www-form-urlencoded");
 
+    private final String participantId;
+    private final String counterPartyId;
     private final String dataPlaneUrl;
     private final Monitor monitor;
     private final String dataPlaneAuthorization;
     private final OkHttpClient httpClient;
     private final ObjectMapper mapper;
+    private final RefreshTokenAuthenticator refreshTokenAuthenticator;
 
-    public HttpDataPlaneClient(String dataPlaneUrl, Monitor monitor, ObjectMapper mapper, String dataPlaneAuthorization) {
+    public HttpDataPlaneClient(String participantId, String counterPartyId, String dataPlaneUrl, Monitor monitor, ObjectMapper mapper, String dataPlaneAuthorization,
+                               RefreshTokenAuthenticator refreshTokenAuthenticator) {
+        this.participantId = participantId;
+        this.counterPartyId = counterPartyId;
         this.dataPlaneUrl = dataPlaneUrl;
         this.monitor = monitor;
         this.dataPlaneAuthorization = dataPlaneAuthorization;
         this.httpClient = new OkHttpClient();
         this.mapper = mapper;
+        this.refreshTokenAuthenticator = refreshTokenAuthenticator;
     }
 
     @Override
@@ -52,8 +63,8 @@ public class HttpDataPlaneClient implements DataPlaneClient {
         try {
             var body = mapper.writeValueAsString(Map.of(
                     "messageId", UUID.randomUUID().toString(),
-                    "participantId", "tck-participant",
-                    "counterPartyId", "tck-counterparty",
+                    "participantId", participantId,
+                    "counterPartyId", counterPartyId,
                     "dataspaceContext", "tck-dataspace",
                     "processId", processId,
                     "agreementId", agreementId,
@@ -74,8 +85,8 @@ public class HttpDataPlaneClient implements DataPlaneClient {
         try {
             var body = mapper.writeValueAsString(Map.of(
                     "messageId", UUID.randomUUID().toString(),
-                    "participantId", "tck-participant",
-                    "counterPartyId", "tck-counterparty",
+                    "participantId", participantId,
+                    "counterPartyId", counterPartyId,
                     "dataspaceContext", "tck-dataspace",
                     "processId", processId,
                     "agreementId", agreementId,
@@ -96,8 +107,8 @@ public class HttpDataPlaneClient implements DataPlaneClient {
         try {
             var messageFields = new java.util.HashMap<String, Object>();
             messageFields.put("messageId", UUID.randomUUID().toString());
-            messageFields.put("participantId", "tck-participant");
-            messageFields.put("counterPartyId", "tck-counterparty");
+            messageFields.put("participantId", participantId);
+            messageFields.put("counterPartyId", counterPartyId);
             messageFields.put("dataspaceContext", "tck-dataspace");
             messageFields.put("processId", processId);
             messageFields.put("agreementId", agreementId);
@@ -122,6 +133,67 @@ public class HttpDataPlaneClient implements DataPlaneClient {
             post(dataPlaneUrl + "/dataflows/" + dataFlowId + "/started", body);
         } catch (IOException e) {
             throw new RuntimeException("Failed to send started notification", e);
+        }
+    }
+
+    @Override
+    public void sendStarted(String dataFlowId, Map<String, Object> dataAddress) {
+        try {
+            var body = mapper.writeValueAsString(Map.of(
+                    "messageId", UUID.randomUUID().toString(),
+                    "dataAddress", dataAddress
+            ));
+            monitor.debug("HTTP DP: sending started notification with DataAddress for dataFlowId=" + dataFlowId);
+            post(dataPlaneUrl + "/dataflows/" + dataFlowId + "/started", body);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to send started notification with DataAddress", e);
+        }
+    }
+
+    @Override
+    public boolean startedNotificationRejected(String dataFlowId, Map<String, Object> dataAddress) {
+        try {
+            var body = mapper.writeValueAsString(Map.of(
+                    "messageId", UUID.randomUUID().toString(),
+                    "dataAddress", dataAddress
+            ));
+            var request = new Request.Builder()
+                    .url(dataPlaneUrl + "/dataflows/" + dataFlowId + "/started")
+                    .header("Authorization", dataPlaneAuthorization)
+                    .post(RequestBody.create(body, JSON))
+                    .build();
+            monitor.debug("HTTP DP: sending started notification (expecting rejection) for dataFlowId=" + dataFlowId);
+            try (var response = httpClient.newCall(request).execute()) {
+                return !response.isSuccessful();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to send started notification", e);
+        }
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public TokenRefreshResult refreshToken(String refreshEndpoint, String refreshToken, String accessToken, boolean validClientAuthentication) {
+        var formBody = "grant_type=refresh_token&refresh_token=" +
+                URLEncoder.encode(refreshToken, StandardCharsets.UTF_8);
+        var clientAuthToken = validClientAuthentication
+                ? refreshTokenAuthenticator.createBearerToken(accessToken)
+                : refreshTokenAuthenticator.createInvalidBearerToken(accessToken);
+        var request = new Request.Builder()
+                .url(refreshEndpoint)
+                .header("Authorization", "Bearer " + clientAuthToken)
+                .post(RequestBody.create(formBody, FORM))
+                .build();
+        monitor.debug("HTTP DP: requesting token renewal at " + refreshEndpoint);
+        try (var response = httpClient.newCall(request).execute()) {
+            var responseBody = response.body().string();
+            if (!response.isSuccessful()) {
+                monitor.debug("HTTP DP: token renewal rejected with HTTP " + response.code() + ". Body: " + responseBody);
+                return new TokenRefreshResult(true, null);
+            }
+            return new TokenRefreshResult(false, mapper.readValue(responseBody, Map.class));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to request token renewal", e);
         }
     }
 

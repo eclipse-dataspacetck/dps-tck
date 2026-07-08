@@ -20,6 +20,10 @@ import org.eclipse.dataspacetck.core.spi.system.ServiceConfiguration;
 import org.eclipse.dataspacetck.core.spi.system.ServiceResolver;
 import org.eclipse.dataspacetck.core.spi.system.SystemConfiguration;
 import org.eclipse.dataspacetck.core.spi.system.SystemLauncher;
+import org.eclipse.dataspacetck.dcp.system.crypto.KeyServiceImpl;
+import org.eclipse.dataspacetck.dcp.system.crypto.Keys;
+import org.eclipse.dataspacetck.dcp.system.did.DidDocumentHandler;
+import org.eclipse.dataspacetck.dcp.system.did.DidServiceImpl;
 import org.eclipse.dataspacetck.dps.system.client.http.HttpControlPlaneClient;
 import org.eclipse.dataspacetck.dps.system.client.http.HttpDataPlaneClient;
 import org.eclipse.dataspacetck.dps.system.client.http.HttpDspClient;
@@ -28,10 +32,13 @@ import org.eclipse.dataspacetck.dps.system.client.local.LocalDataPlaneClient;
 import org.eclipse.dataspacetck.dps.system.client.local.LocalDspClient;
 import org.eclipse.dataspacetck.dps.system.connector.LocalControlPlaneConnector;
 import org.eclipse.dataspacetck.dps.system.connector.LocalDataPlaneConnector;
+import org.eclipse.dataspacetck.dps.system.crypto.RefreshTokenAuthenticator;
 import org.eclipse.dataspacetck.dps.system.pipeline.ControlPlaneSignalingPipeline;
 import org.eclipse.dataspacetck.dps.system.pipeline.DataPlaneSignalingPipeline;
 import org.jspecify.annotations.NonNull;
 import tools.jackson.databind.ObjectMapper;
+
+import java.net.URI;
 
 import static org.eclipse.dataspacetck.core.api.system.SystemsConstants.TCK_PREFIX;
 
@@ -47,24 +54,43 @@ public class DpsSystemLauncher implements SystemLauncher {
     private static final String CONTROL_PLANE_SIGNALING_URL_CONFIG = TCK_PREFIX + ".dps.controlplane.signaling.url";
     private static final String DATA_PLANE_URL_CONFIG = TCK_PREFIX + ".dps.dataplane.url";
     private static final String DATA_PLANE_AUTHORIZATION_CONFIG = TCK_PREFIX + ".dps.dataplane.authorization";
+    private static final String PROVIDER_ID = TCK_PREFIX + ".dps.dataplane.provider.id";
+    private static final String COUNTER_PARTY_ID = TCK_PREFIX + ".dps.dataplane.counterparty.id";
     private static final int DEFAULT_WAIT_SECONDS = 15;
     private static final String DEFAULT_WAIT_CONFIG = TCK_PREFIX + ".dps.default.wait";
-
+    private static final String DID_DOCUMENT_PATH = "/\\.well-known/did\\.json";
+    private final ObjectMapper mapper = new ObjectMapper();
     private String controlPlaneWebhookUrl;
     private String controlPlaneProtocolUrl;
     private String controlPlaneSignalingUrl;
     private String dataPlaneUrl;
     private String dataPlaneAuthorization;
+    private String providerId;
+    private String counterPartyId;
     private long waitTime = DEFAULT_WAIT_SECONDS;
     private boolean useLocalConnector;
     private Monitor monitor;
-    private final ObjectMapper mapper = new ObjectMapper();
+
+    /**
+     * Derives a {@code did:web} identifier from an HTTP(S) URL, encoding a non-default port as {@code %3A}.
+     * The corresponding DID document is resolved at {@code <host>[:<port>]/.well-known/did.json}.
+     */
+    private static String toDidWeb(String url) {
+        var uri = URI.create(url);
+        var port = uri.getPort();
+        return port > 0 && port != 443
+                ? "did:web:%s%%3A%s".formatted(uri.getHost(), port)
+                : "did:web:%s".formatted(uri.getHost());
+    }
 
     @Override
     public void start(SystemConfiguration configuration) {
         monitor = configuration.getMonitor();
         waitTime = configuration.getPropertyAsLong(DEFAULT_WAIT_CONFIG, DEFAULT_WAIT_SECONDS);
         useLocalConnector = configuration.getPropertyAsBoolean(LOCAL_CONNECTOR_CONFIG, false);
+        // Read regardless of mode: the local pipeline also needs a provider identity for the token-renewal flow.
+        providerId = configuration.getPropertyAsString(PROVIDER_ID, "tck-participant");
+        counterPartyId = configuration.getPropertyAsString(COUNTER_PARTY_ID, "tck-counterparty");
         if (!useLocalConnector) {
             controlPlaneWebhookUrl = configuration.getPropertyAsString(CONTROL_PLANE_WEBHOOK_URL_CONFIG, null);
             controlPlaneProtocolUrl = configuration.getPropertyAsString(CONTROL_PLANE_PROTOCOL_URL_CONFIG, null);
@@ -120,13 +146,26 @@ public class DpsSystemLauncher implements SystemLauncher {
         if (dataPlaneUrl == null) {
             throw new RuntimeException("Required configuration not set: " + DATA_PLANE_URL_CONFIG);
         }
-        var dataPlaneClient = new HttpDataPlaneClient(dataPlaneUrl, monitor, mapper, dataPlaneAuthorization);
+        // Acting as the token-renewal data client: generate a key, publish it via a did:web document on the
+        // TCK callback endpoint, and sign refresh requests so the provider can resolve and verify the client JWT.
+        var keyService = new KeyServiceImpl(Keys.generateEcKey());
+        var clientDid = toDidWeb(callbackEndpoint.getAddress());
+        var didService = new DidServiceImpl(clientDid, callbackEndpoint.getAddress(), keyService);
+        callbackEndpoint.registerHandler(DID_DOCUMENT_PATH, new DidDocumentHandler(didService, new com.fasterxml.jackson.databind.ObjectMapper()));
+
+        var authenticator = new RefreshTokenAuthenticator(keyService, clientDid, providerId);
+        var dataPlaneClient = new HttpDataPlaneClient(providerId, counterPartyId, dataPlaneUrl, monitor, mapper, dataPlaneAuthorization, authenticator);
         return new DataPlaneSignalingPipeline(dataPlaneClient, callbackEndpoint, monitor, waitTime, mapper);
     }
 
     private @NonNull DataPlaneSignalingPipeline localDataPlanePipeline(CallbackEndpoint callbackEndpoint) {
-        var connector = new LocalDataPlaneConnector(monitor);
-        var dataPlaneClient = new LocalDataPlaneClient(connector, callbackEndpoint);
+        // Mirror the http wiring so the in-process connector can validate the token-renewal client authentication:
+        // the authenticator signs with clientDid/providerDid and the connector rejects anything that does not match.
+        var keyService = new KeyServiceImpl(Keys.generateEcKey());
+        var clientDid = toDidWeb(callbackEndpoint.getAddress());
+        var authenticator = new RefreshTokenAuthenticator(keyService, clientDid, providerId);
+        var connector = new LocalDataPlaneConnector(monitor, clientDid, providerId);
+        var dataPlaneClient = new LocalDataPlaneClient(connector, callbackEndpoint, authenticator);
         return new DataPlaneSignalingPipeline(dataPlaneClient, callbackEndpoint, monitor, waitTime, mapper);
     }
 

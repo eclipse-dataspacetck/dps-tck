@@ -88,9 +88,16 @@ dependencies {
     implementation(libs.awaitility)
     implementation(libs.okhttp)
     implementation(libs.jackson.databind)
+    implementation(libs.jackson2.databind)
     implementation(libs.json.schema.validator)
     implementation(libs.junit.jupiter.api)
     implementation(libs.junit.platform.launcher)
+
+    // Token-renewal client authentication: reuse the DCP TCK signing + DID machinery.
+    implementation(libs.dcp.system)
+    implementation(libs.nimbus.jwt)
+
+    testImplementation(libs.bouncycastle)
 
     testRuntimeOnly(libs.junit.platform.engine)
 }

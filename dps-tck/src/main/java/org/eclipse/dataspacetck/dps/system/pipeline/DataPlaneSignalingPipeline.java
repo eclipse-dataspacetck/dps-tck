@@ -25,6 +25,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -89,6 +90,43 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
 
     public DataPlaneSignalingPipeline sendDataFlowStartMessageWithDataAddressAsync(String agreementId, String datasetId, String profile) {
         stages.add(() -> sendDataFlowStartMessageWithDataAddress(true, agreementId, datasetId, profile));
+        return this;
+    }
+
+    public DataPlaneSignalingPipeline sendDataFlowStartMessageWithHttpPushDataAddress(String agreementId, String datasetId, String profile) {
+        stages.add(() -> sendDataFlowStartMessageWithHttpPushDataAddress(false, agreementId, datasetId, profile));
+        return this;
+    }
+
+    public DataPlaneSignalingPipeline sendDataFlowStartMessageWithHttpPushDataAddressAsync(String agreementId, String datasetId, String profile) {
+        stages.add(() -> sendDataFlowStartMessageWithHttpPushDataAddress(true, agreementId, datasetId, profile));
+        return this;
+    }
+
+    public DataPlaneSignalingPipeline sendDataFlowStartedNotificationWithRenewableHttpPullDataAddress() {
+        stages.add(() -> {
+            var dataFlowId = capturedDataFlow.get().dataFlowId();
+            // Always exercise the Token Renewal profile: deliver a renewable http-pull DataAddress.
+            var dataAddress = HttpDataAddresses.httpPullWithRenewal(
+                    "https://provider.example.com/data/" + dataFlowId,
+                    UUID.randomUUID().toString(),
+                    UUID.randomUUID().toString(),
+                    "300",
+                    "https://provider.example.com/authorization/refresh");
+            monitor.debug("TCK CP: sending started notification with renewable http-pull DataAddress for dataFlowId=" + dataFlowId);
+            dataPlaneClient.sendStarted(dataFlowId, dataAddress);
+        });
+        return this;
+    }
+
+    public DataPlaneSignalingPipeline sendDataFlowStartedNotificationWithNonRenewableHttpPullDataAddressExpectingRejection() {
+        then(() -> {
+            var dataFlowId = capturedDataFlow.get().dataFlowId();
+            var dataAddress = HttpDataAddresses.httpPull("https://provider.example.com/data/" + dataFlowId, UUID.randomUUID().toString());
+            monitor.debug("TCK CP: sending started notification with a non-renewable http-pull DataAddress, expecting rejection");
+            var rejected = dataPlaneClient.startedNotificationRejected(dataFlowId, dataAddress);
+            assertThat(rejected).as("consumer must reject an http-pull DataAddress without Token Renewal properties").isTrue();
+        });
         return this;
     }
 
@@ -213,20 +251,29 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
     }
 
     private void sendDataFlowStartMessageWithDataAddress(boolean async, String agreementId, String datasetId, String profile) {
+        Map<String, Object> dataAddress = Map.of("endpointType", "https://w3id.org/idsa/v4.1/HTTP", "endpoint", endpoint.getAddress());
+        sendStartWithDataAddress(async, agreementId, datasetId, profile, dataAddress, "DataFlowStartMessage (with DataAddress)");
+    }
+
+    private void sendDataFlowStartMessageWithHttpPushDataAddress(boolean async, String agreementId, String datasetId, String profile) {
+        var dataAddress = HttpDataAddresses.httpPush("https://consumer.example.com/ingest/" + UUID.randomUUID(), UUID.randomUUID().toString());
+        sendStartWithDataAddress(async, agreementId, datasetId, profile, dataAddress, "DataFlowStartMessage (with http-push DataAddress)");
+    }
+
+    private void sendStartWithDataAddress(boolean async, String agreementId, String datasetId, String profile, Map<String, Object> dataAddress, String label) {
         var processId = UUID.randomUUID().toString();
         capturedProcessId.set(processId);
-        monitor.debug("TCK CP: sending DataFlowStartMessage (with DataAddress) for processId=" + processId);
-        Map<String, Object> dataAddress = Map.of("endpointType", "https://w3id.org/idsa/v4.1/HTTP", "endpoint", endpoint.getAddress());
+        monitor.debug("TCK CP: sending " + label + " for processId=" + processId);
         var result = dataPlaneClient.startWithDataAddress(async, processId, agreementId, datasetId, profile, dataAddress);
         if (result == null || result.dataFlowId() == null) {
-            throw new RuntimeException("DataFlowStartMessage response missing dataFlowId");
+            throw new RuntimeException(label + " response missing dataFlowId");
         }
         var expectedState = async ? "STARTING" : "STARTED";
         if (!expectedState.equals(result.state())) {
             throw new RuntimeException("Expected state %s but got: %s".formatted(expectedState, result.state()));
         }
         capturedDataFlow.set(result);
-        monitor.debug("TCK CP: DataFlowStartMessage (with DataAddress) response: dataFlowId=" + result.dataFlowId() + ", state=" + result.state());
+        monitor.debug("TCK CP: " + label + " response: dataFlowId=" + result.dataFlowId() + ", state=" + result.state());
     }
 
     private void registerCallbackHandler(String pathPattern, AtomicBoolean receivedFlag) {
@@ -285,6 +332,122 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
             assertThat(capturedDataFlow.get().dataAddress()).isNotNull();
         });
         return this;
+    }
+
+    /**
+     * Asserts the received DataAddress conforms to the HTTP pull profile format.
+     */
+    public DataPlaneSignalingPipeline expectReceivedDataAddressToBeValidHttpPull() {
+        then(() -> assertValidHttpDataAddress(HttpDataAddresses.HTTP_PULL));
+        return this;
+    }
+
+    /**
+     * Asserts the received DataAddress conforms to the HTTP push profile format.
+     */
+    public DataPlaneSignalingPipeline expectReceivedDataAddressToBeValidHttpPush() {
+        then(() -> assertValidHttpDataAddress(HttpDataAddresses.HTTP_PUSH));
+        return this;
+    }
+
+    /**
+     * Asserts the received pull DataAddress carries valid Token Renewal profile properties.
+     */
+    public DataPlaneSignalingPipeline expectReceivedDataAddressToHaveValidRenewalProperties() {
+        then(() -> {
+            monitor.debug("TCK CP: expecting received data address to carry renewal properties");
+            var dataAddress = capturedDataFlow.get().dataAddress();
+            assertThat(dataAddress).as("DataAddress").isNotNull();
+            var properties = endpointProperties(dataAddress);
+            assertThat(properties).as("authType must be bearer").containsEntry(HttpDataAddresses.AUTH_TYPE, HttpDataAddresses.BEARER);
+            assertThat(properties.get(HttpDataAddresses.REFRESH_TOKEN)).as("refreshToken").isNotBlank();
+            assertThat(properties.get(HttpDataAddresses.EXPIRES_IN)).as("expiresIn must be a numeric string of seconds").matches("\\d+");
+            assertThat(properties.get(HttpDataAddresses.REFRESH_ENDPOINT)).as("refreshEndpoint must be an HTTP or HTTPS URL").isNotNull().matches("https?://.*");
+        });
+        return this;
+    }
+
+    /**
+     * Acts as the data client and drives the token renewal exchange against the {@code refreshEndpoint}
+     * carried in the received pull DataAddress, asserting a valid OAuth 2.0 token response.
+     */
+    public DataPlaneSignalingPipeline thenDriveTokenRenewal() {
+        then(() -> {
+            var properties = renewalProperties();
+            var refreshToken = properties.get(HttpDataAddresses.REFRESH_TOKEN);
+            var accessToken = properties.get(HttpDataAddresses.AUTHORIZATION);
+            assertThat(refreshToken).as("refreshToken").isNotBlank();
+            monitor.debug("TCK data client: driving token renewal at " + properties.get(HttpDataAddresses.REFRESH_ENDPOINT));
+            var result = dataPlaneClient.refreshToken(properties.get(HttpDataAddresses.REFRESH_ENDPOINT), refreshToken, accessToken, true);
+            assertThat(result.rejected()).as("valid token renewal should be accepted").isFalse();
+            var tokenResponse = result.tokenResponse();
+            assertThat(tokenResponse).as("token response").isNotNull();
+            assertThat(String.valueOf(tokenResponse.get("access_token"))).as("access_token").isNotBlank().isNotEqualTo(accessToken);
+            assertThat(tokenResponse.get("token_type")).as("token_type").isNotNull();
+        });
+        return this;
+    }
+
+    /**
+     * Drives a token renewal presenting an invalid (never issued) refresh token and asserts the provider rejects it.
+     */
+    public DataPlaneSignalingPipeline thenDriveTokenRenewalWithInvalidRefreshTokenExpectingRejection() {
+        then(() -> {
+            var properties = renewalProperties();
+            var invalidRefreshToken = "invalid-refresh-token-" + UUID.randomUUID();
+            monitor.debug("TCK data client: driving token renewal with an invalid refresh token");
+            var result = dataPlaneClient.refreshToken(properties.get(HttpDataAddresses.REFRESH_ENDPOINT), invalidRefreshToken,
+                    properties.get(HttpDataAddresses.AUTHORIZATION), true);
+            assertThat(result.rejected()).as("provider must reject an invalid refresh token").isTrue();
+        });
+        return this;
+    }
+
+    /**
+     * Drives a token renewal presenting an invalid client-authentication token (wrong iss/sub/aud) and asserts
+     * the provider rejects it.
+     */
+    public DataPlaneSignalingPipeline thenDriveTokenRenewalWithInvalidClientAuthenticationExpectingRejection() {
+        then(() -> {
+            var properties = renewalProperties();
+            monitor.debug("TCK data client: driving token renewal with an invalid client-authentication token");
+            var result = dataPlaneClient.refreshToken(properties.get(HttpDataAddresses.REFRESH_ENDPOINT),
+                    properties.get(HttpDataAddresses.REFRESH_TOKEN), properties.get(HttpDataAddresses.AUTHORIZATION), false);
+            assertThat(result.rejected()).as("provider must reject an invalid client-authentication token").isTrue();
+        });
+        return this;
+    }
+
+    private Map<String, String> renewalProperties() {
+        var dataAddress = capturedDataFlow.get().dataAddress();
+        assertThat(dataAddress).as("DataAddress").isNotNull();
+        var properties = endpointProperties(dataAddress);
+        assertThat(properties.get(HttpDataAddresses.REFRESH_ENDPOINT)).as("refreshEndpoint").isNotBlank();
+        return properties;
+    }
+
+    private void assertValidHttpDataAddress(String expectedEndpointType) {
+        monitor.debug("TCK CP: expecting received data address to be a valid " + expectedEndpointType + " DataAddress");
+        var dataAddress = capturedDataFlow.get().dataAddress();
+        assertThat(dataAddress).as("DataAddress").isNotNull();
+        assertThat(dataAddress.get("endpointType")).as("endpointType").isEqualTo(expectedEndpointType);
+        assertThat(dataAddress.get("endpoint")).as("endpoint").isInstanceOf(String.class);
+        assertThat((String) dataAddress.get("endpoint")).as("endpoint must be an HTTP or HTTPS URL").matches("https?://.*");
+        var properties = endpointProperties(dataAddress);
+        assertThat(properties).as("authType must be bearer").containsEntry(HttpDataAddresses.AUTH_TYPE, HttpDataAddresses.BEARER);
+        assertThat(properties.get(HttpDataAddresses.AUTHORIZATION)).as("authorization token").isNotBlank();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> endpointProperties(Map<String, Object> dataAddress) {
+        var raw = dataAddress.get("endpointProperties");
+        assertThat(raw).as("endpointProperties").isInstanceOf(List.class);
+        var result = new HashMap<String, String>();
+        for (var entry : (List<Map<String, Object>>) raw) {
+            var value = entry.get("value");
+            result.put(String.valueOf(entry.get("name")), value == null ? null : String.valueOf(value));
+        }
+        return result;
     }
 
     public DataPlaneSignalingPipeline thenWaitForDataFlowToBeInState(String state) {

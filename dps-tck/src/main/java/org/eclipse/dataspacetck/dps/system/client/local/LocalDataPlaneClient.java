@@ -17,6 +17,7 @@ package org.eclipse.dataspacetck.dps.system.client.local;
 import org.eclipse.dataspacetck.core.api.system.CallbackEndpoint;
 import org.eclipse.dataspacetck.dps.system.client.DataPlaneClient;
 import org.eclipse.dataspacetck.dps.system.connector.LocalDataPlaneConnector;
+import org.eclipse.dataspacetck.dps.system.crypto.RefreshTokenAuthenticator;
 
 import java.util.Map;
 
@@ -27,10 +28,12 @@ public class LocalDataPlaneClient implements DataPlaneClient {
 
     private final LocalDataPlaneConnector connector;
     private final CallbackEndpoint callbackEndpoint;
+    private final RefreshTokenAuthenticator refreshTokenAuthenticator;
 
-    public LocalDataPlaneClient(LocalDataPlaneConnector connector, CallbackEndpoint callbackEndpoint) {
+    public LocalDataPlaneClient(LocalDataPlaneConnector connector, CallbackEndpoint callbackEndpoint, RefreshTokenAuthenticator refreshTokenAuthenticator) {
         this.connector = connector;
         this.callbackEndpoint = callbackEndpoint;
+        this.refreshTokenAuthenticator = refreshTokenAuthenticator;
     }
 
     @Override
@@ -51,6 +54,24 @@ public class LocalDataPlaneClient implements DataPlaneClient {
     @Override
     public void sendStarted(String dataFlowId) {
         connector.handleStarted(dataFlowId);
+    }
+
+    @Override
+    public void sendStarted(String dataFlowId, Map<String, Object> dataAddress) {
+        connector.handleStarted(dataFlowId, dataAddress);
+    }
+
+    @Override
+    public boolean startedNotificationRejected(String dataFlowId, Map<String, Object> dataAddress) {
+        return connector.handleStartedRejectingNonRenewable(dataFlowId, dataAddress);
+    }
+
+    @Override
+    public TokenRefreshResult refreshToken(String refreshEndpoint, String refreshToken, String accessToken, boolean validClientAuthentication) {
+        var clientAuthToken = validClientAuthentication
+                ? refreshTokenAuthenticator.createBearerToken(accessToken)
+                : refreshTokenAuthenticator.createInvalidBearerToken(accessToken);
+        return connector.handleRefresh(clientAuthToken, refreshToken);
     }
 
     @Override
