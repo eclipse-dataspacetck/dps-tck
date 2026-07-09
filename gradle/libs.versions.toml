@@ -10,7 +10,7 @@ jackson = "3.2.0"
 jackson2 = "2.22.0"
 json-schema-validator = "3.0.5"
 junit = "6.1.1"
-nimbus = "10.9"
+nimbus = "10.9.1"
 okhttp = "5.4.0"
 tck = "1.2.2"
 
