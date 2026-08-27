@@ -151,7 +151,7 @@ public class DataPlaneProviderSignalingPushTest {
 
             TCK->>CUT: DataFlowStartMessage + DataAddress (POST /dataflows/start)
             CUT-->>TCK: 200 OK + DataFlowStatusMessage (state=STARTED)
-            CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{processId}/dataflow/completed, state=COMPLETED)
+            CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{dataFlowId}/dataflow/completed, state=COMPLETED)
             TCK-->>CUT: 200 OK
             """)
     public void dp_p_push_03_01() {
@@ -173,7 +173,7 @@ public class DataPlaneProviderSignalingPushTest {
 
             TCK->>CUT: DataFlowStartMessage + DataAddress (POST /dataflows/start)
             CUT-->>TCK: 202 Accepted + DataFlowStatusMessage (state=STARTING)
-            CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{processId}/dataflow/started, state=STARTED)
+            CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{dataFlowId}/dataflow/started, state=STARTED)
             TCK-->>CUT: 200 OK
             """)
     public void dp_p_push_04_01() {

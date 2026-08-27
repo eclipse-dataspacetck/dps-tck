@@ -151,7 +151,7 @@ public class DataPlaneProviderSignalingPullTest {
 
             TCK->>CUT: DataFlowStartMessage (POST /dataflows/start)
             CUT-->>TCK: 202 Accepted + DataFlowStatusMessage (state=STARTING)
-            CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{processId}/dataflow/started, state=STARTED)
+            CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{dataFlowId}/dataflow/started, state=STARTED)
             CUT-->>TCK: 200 OK
             """)
     public void dp_p_pull_04_01() {

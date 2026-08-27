@@ -59,14 +59,14 @@ public class LocalControlPlaneConnector {
 
     public String triggerDataFlowPreparation(String agreementId, String datasetId, String dataPlaneUrl) {
         dataPlaneBaseUrl.set(dataPlaneUrl);
-        var processId = UUID.randomUUID().toString();
+        var dataFlowId = UUID.randomUUID().toString();
         var consumerPid = UUID.randomUUID().toString();
 
-        sendPrepareMessage(dataPlaneUrl, processId, agreementId, datasetId);
+        sendPrepareMessage(dataPlaneUrl, dataFlowId, agreementId, datasetId);
         sendDspTransferRequestMessage(dataPlaneUrl, consumerPid, agreementId);
 
         transferStates.put(consumerPid, "REQUESTED");
-        return processId;
+        return dataFlowId;
     }
 
     /**
@@ -77,16 +77,16 @@ public class LocalControlPlaneConnector {
     public String triggerDataFlowPreparationAsync(String agreementId, String datasetId, String dataPlaneUrl) {
         dataPlaneBaseUrl.set(dataPlaneUrl);
         pendingPrepareAgreementId.set(agreementId);
-        var processId = UUID.randomUUID().toString();
-        sendPrepareMessage(dataPlaneUrl, processId, agreementId, datasetId);
-        return processId;
+        var dataFlowId = UUID.randomUUID().toString();
+        sendPrepareMessage(dataPlaneUrl, dataFlowId, agreementId, datasetId);
+        return dataFlowId;
     }
 
     /**
      * Simulates the CUT receiving the async /dataflow/prepared callback.
      * After receiving it, the CUT sends the DSP TransferRequestMessage.
      */
-    public void receivePreparedCallback(String processId, String dataFlowId) {
+    public void receivePreparedCallback(String dataFlowId) {
         var agreementId = pendingPrepareAgreementId.get();
         var dataPlaneUrl = dataPlaneBaseUrl.get();
         monitor.debug("Local CUT: received PREPARED callback for dataFlowId=" + dataFlowId + ", sending TransferRequestMessage");
@@ -99,63 +99,63 @@ public class LocalControlPlaneConnector {
      * Simulates the CUT receiving the async /dataflow/started callback (provider side).
      * The CUT transitions the transfer to STARTED state.
      */
-    public void receiveStartedCallback(String processId, String dataFlowId) {
+    public void receiveStartedCallback(String dataFlowId) {
         monitor.debug("Local CUT: received STARTED callback for dataFlowId=" + dataFlowId);
-        transferStates.put(processId, "STARTED");
+        transferStates.put(dataFlowId, "STARTED");
     }
 
-    public String getTransferState(String processId) {
-        return transferStates.getOrDefault(processId, "UNKNOWN");
+    public String getTransferState(String dataFlowId) {
+        return transferStates.getOrDefault(dataFlowId, "UNKNOWN");
     }
 
-    public void receiveTransferStart(String processId) {
-        var currentState = transferStates.get(processId);
+    public void receiveTransferStart(String dataFlowId) {
+        var currentState = transferStates.get(dataFlowId);
         if (currentState != null && currentState.equals("SUSPENDED")) {
-            monitor.debug("Local CUT: transfer resumed for processId=" + processId);
-            transferStates.put(processId, "RESUMED");
+            monitor.debug("Local CUT: transfer resumed for dataFlowId=" + dataFlowId);
+            transferStates.put(dataFlowId, "RESUMED");
             var baseUrl = dataPlaneBaseUrl.get();
             if (baseUrl != null) {
-                var message = Map.of("messageId", UUID.randomUUID().toString(), "processId", processId);
-                sendAsync(baseUrl + "/dataflows/" + processId + "/resume", serialize(message), "resume notification");
+                var message = Map.of("messageId", UUID.randomUUID().toString(), "dataFlowId", dataFlowId);
+                sendAsync(baseUrl + "/dataflows/" + dataFlowId + "/resume", serialize(message), "resume notification");
             }
         } else {
-            monitor.debug("Local CUT: transfer started for processId=" + processId);
-            transferStates.put(processId, "STARTED");
+            monitor.debug("Local CUT: transfer started for dataFlowId=" + dataFlowId);
+            transferStates.put(dataFlowId, "STARTED");
             var baseUrl = dataPlaneBaseUrl.get();
             if (baseUrl != null) {
                 var message = Map.of("messageId", UUID.randomUUID().toString());
-                sendAsync(baseUrl + "/dataflows/" + processId + "/started", serialize(message), "DataFlowStartedNotificationMessage");
+                sendAsync(baseUrl + "/dataflows/" + dataFlowId + "/started", serialize(message), "DataFlowStartedNotificationMessage");
             }
         }
     }
 
-    public void receiveTransferCompletion(String processId) {
-        monitor.debug("Local CUT: transfer completed for processId=" + processId);
-        transferStates.put(processId, "COMPLETED");
+    public void receiveTransferCompletion(String dataFlowId) {
+        monitor.debug("Local CUT: transfer completed for dataFlowId=" + dataFlowId);
+        transferStates.put(dataFlowId, "COMPLETED");
         var baseUrl = dataPlaneBaseUrl.get();
         if (baseUrl != null) {
             var message = Map.of("messageId", UUID.randomUUID().toString());
-            sendAsync(baseUrl + "/dataflows/" + processId + "/completed", serialize(message), "completed notification");
+            sendAsync(baseUrl + "/dataflows/" + dataFlowId + "/completed", serialize(message), "completed notification");
         }
     }
 
-    public void receiveTransferTermination(String processId) {
-        monitor.debug("Local CUT: transfer terminated for processId=" + processId);
-        transferStates.put(processId, "TERMINATED");
+    public void receiveTransferTermination(String dataFlowId) {
+        monitor.debug("Local CUT: transfer terminated for dataFlowId=" + dataFlowId);
+        transferStates.put(dataFlowId, "TERMINATED");
         var baseUrl = dataPlaneBaseUrl.get();
         if (baseUrl != null) {
             var message = Map.of("messageId", UUID.randomUUID().toString());
-            sendAsync(baseUrl + "/dataflows/" + processId + "/terminate", serialize(message), "terminate notification");
+            sendAsync(baseUrl + "/dataflows/" + dataFlowId + "/terminate", serialize(message), "terminate notification");
         }
     }
 
-    public void receiveTransferSuspension(String processId) {
-        monitor.debug("Local CUT: transfer suspended for processId=" + processId);
-        transferStates.put(processId, "SUSPENDED");
+    public void receiveTransferSuspension(String dataFlowId) {
+        monitor.debug("Local CUT: transfer suspended for dataFlowId=" + dataFlowId);
+        transferStates.put(dataFlowId, "SUSPENDED");
         var baseUrl = dataPlaneBaseUrl.get();
         if (baseUrl != null) {
             var message = Map.of("messageId", UUID.randomUUID().toString(), "reason", "suspended by consumer");
-            sendAsync(baseUrl + "/dataflows/" + processId + "/suspend", serialize(message), "suspend notification");
+            sendAsync(baseUrl + "/dataflows/" + dataFlowId + "/suspend", serialize(message), "suspend notification");
         }
     }
 
@@ -174,7 +174,7 @@ public class LocalControlPlaneConnector {
                 "participantId", "local-participant",
                 "counterPartyId", "local-counterparty",
                 "dataspaceContext", "local-dataspace",
-                "processId", providerPid,
+                "dataFlowId", providerPid,
                 "agreementId", agreementId,
                 "datasetId", UUID.randomUUID().toString(),
                 "callbackAddress", Optional.ofNullable(dataPlaneBaseUrl.get()).orElse("local://callback"),
@@ -187,21 +187,21 @@ public class LocalControlPlaneConnector {
         return providerPid;
     }
 
-    private void sendPrepareMessage(String dataPlaneUrl, String processId, String agreementId, String datasetId) {
+    private void sendPrepareMessage(String dataPlaneUrl, String dataFlowId, String agreementId, String datasetId) {
         try {
             var message = Map.of(
                     "messageId", UUID.randomUUID().toString(),
                     "participantId", "local-participant",
                     "counterPartyId", "local-counterparty",
                     "dataspaceContext", "local-dataspace",
-                    "processId", processId,
+                    "dataFlowId", dataFlowId,
                     "agreementId", agreementId,
                     "datasetId", datasetId,
                     "profile", "HttpData-PULL",
                     "claims", Map.of()
             );
             post(dataPlaneUrl + "/dataflows/prepare", serialize(message));
-            monitor.debug("Local CUT: sent DataFlowPrepareMessage for processId=" + processId);
+            monitor.debug("Local CUT: sent DataFlowPrepareMessage for dataFlowId=" + dataFlowId);
         } catch (IOException e) {
             throw new RuntimeException("Failed to send DataFlowPrepareMessage", e);
         }

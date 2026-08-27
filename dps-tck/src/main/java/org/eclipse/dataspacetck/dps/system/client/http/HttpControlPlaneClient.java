@@ -57,13 +57,13 @@ public class HttpControlPlaneClient implements ControlPlaneClient {
     }
 
     @Override
-    public void notifyPrepared(String processId, String dataFlowId) {
-        sendStatusCallback(signalingUrl + "/transfers/" + processId + "/dataflow/prepared", dataFlowId, "PREPARED");
+    public void notifyPrepared(String dataFlowId) {
+        sendStatusCallback(signalingUrl + "/transfers/" + dataFlowId + "/dataflow/prepared", dataFlowId, "PREPARED");
     }
 
     @Override
-    public void notifyStarted(String processId, String dataFlowId) {
-        sendStatusCallback(signalingUrl + "/transfers/" + processId + "/dataflow/started", dataFlowId, "STARTED");
+    public void notifyStarted(String dataFlowId) {
+        sendStatusCallback(signalingUrl + "/transfers/" + dataFlowId + "/dataflow/started", dataFlowId, "STARTED");
     }
 
     private String triggerInternal(String agreementId, String datasetId, String dataPlaneUrl, boolean async) {
@@ -88,11 +88,11 @@ public class HttpControlPlaneClient implements ControlPlaneClient {
                 }
                 var responseBody = response.body().string();
                 var responseJson = mapper.readValue(responseBody, Map.class);
-                var processId = (String) responseJson.get("id");
-                if (processId == null) {
+                var dataFlowId = (String) responseJson.get("id");
+                if (dataFlowId == null) {
                     throw new RuntimeException("Control plane response missing 'id' field");
                 }
-                return processId;
+                return dataFlowId;
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to trigger data flow preparation", e);

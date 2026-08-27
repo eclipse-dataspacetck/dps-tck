@@ -21,11 +21,11 @@ import java.util.Map;
  */
 public interface DataPlaneClient {
 
-    DataFlowResult prepare(boolean async, String processId, String agreementId, String datasetId, String profile);
+    DataFlowResult prepare(boolean async, String dataFlowId, String agreementId, String datasetId, String profile);
 
-    DataFlowResult start(boolean async, String processId, String agreementId, String datasetId, String profile);
+    DataFlowResult start(boolean async, String dataFlowId, String agreementId, String datasetId, String profile);
 
-    DataFlowResult startWithDataAddress(boolean async, String processId, String agreementId, String datasetId, String profile, Map<String, Object> dataAddress);
+    DataFlowResult startWithDataAddress(boolean async, String dataFlowId, String agreementId, String datasetId, String profile, Map<String, Object> dataAddress);
 
     void sendStarted(String dataFlowId);
 
@@ -54,7 +54,7 @@ public interface DataPlaneClient {
 
     void sendCompleted(String dataFlowId);
 
-    void sendCompletedCallback(String processId, String dataFlowId);
+    void sendCompletedCallback(String dataFlowId);
 
     DataFlowStatusResponseMessage getStatus(String dataFlowId);
 

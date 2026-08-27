@@ -46,17 +46,15 @@ public interface ControlPlaneClient {
     /**
      * Sends the async PREPARED callback to the control plane, notifying it that the data flow has reached the PREPARED state.
      *
-     * @param processId       the transfer process ID
-     * @param dataFlowId      the data flow ID assigned by the data plane
+     * @param dataFlowId the data flow ID assigned by the data plane
      */
-    void notifyPrepared(String processId, String dataFlowId);
+    void notifyPrepared(String dataFlowId);
 
     /**
      * Sends the async STARTED callback to the control plane, notifying it that the data flow has reached the STARTED state.
      *
-     * @param processId       the transfer process ID
-     * @param dataFlowId      the data flow ID assigned by the data plane
+     * @param dataFlowId the data flow ID assigned by the data plane
      */
-    void notifyStarted(String processId, String dataFlowId);
+    void notifyStarted(String dataFlowId);
 
 }
