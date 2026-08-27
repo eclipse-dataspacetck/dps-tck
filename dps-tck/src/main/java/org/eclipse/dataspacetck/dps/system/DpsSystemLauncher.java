@@ -151,7 +151,7 @@ public class DpsSystemLauncher implements SystemLauncher {
         var keyService = new KeyServiceImpl(Keys.generateEcKey());
         var clientDid = toDidWeb(callbackEndpoint.getAddress());
         var didService = new DidServiceImpl(clientDid, callbackEndpoint.getAddress(), keyService);
-        callbackEndpoint.registerHandler(DID_DOCUMENT_PATH, new DidDocumentHandler(didService, new com.fasterxml.jackson.databind.ObjectMapper()));
+        callbackEndpoint.registerHandler(DID_DOCUMENT_PATH, new DidDocumentHandler(didService, new ObjectMapper()));
 
         var authenticator = new RefreshTokenAuthenticator(keyService, clientDid, providerId);
         var dataPlaneClient = new HttpDataPlaneClient(providerId, counterPartyId, dataPlaneUrl, monitor, mapper, dataPlaneAuthorization, authenticator);
