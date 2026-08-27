@@ -59,20 +59,20 @@ public class HttpDataPlaneClient implements DataPlaneClient {
     }
 
     @Override
-    public DataFlowResult prepare(boolean async, String processId, String agreementId, String datasetId, String profile) {
+    public DataFlowResult prepare(boolean async, String dataFlowId, String agreementId, String datasetId, String profile) {
         try {
             var body = mapper.writeValueAsString(Map.of(
                     "messageId", UUID.randomUUID().toString(),
                     "participantId", participantId,
                     "counterPartyId", counterPartyId,
                     "dataspaceContext", "tck-dataspace",
-                    "processId", processId,
+                    "dataFlowId", dataFlowId,
                     "agreementId", agreementId,
                     "datasetId", datasetId,
                     "profile", profile,
                     "claims", Map.of()
             ));
-            monitor.debug("HTTP DP: sending DataFlowPrepareMessage for processId=" + processId);
+            monitor.debug("HTTP DP: sending DataFlowPrepareMessage for dataFlowId=" + dataFlowId);
             var response = post(dataPlaneUrl + "/dataflows/prepare", body);
             return parseDataFlowResult(response);
         } catch (IOException e) {
@@ -81,20 +81,20 @@ public class HttpDataPlaneClient implements DataPlaneClient {
     }
 
     @Override
-    public DataFlowResult start(boolean async, String processId, String agreementId, String datasetId, String profile) {
+    public DataFlowResult start(boolean async, String dataFlowId, String agreementId, String datasetId, String profile) {
         try {
             var body = mapper.writeValueAsString(Map.of(
                     "messageId", UUID.randomUUID().toString(),
                     "participantId", participantId,
                     "counterPartyId", counterPartyId,
                     "dataspaceContext", "tck-dataspace",
-                    "processId", processId,
+                    "dataFlowId", dataFlowId,
                     "agreementId", agreementId,
                     "datasetId", datasetId,
                     "profile", profile,
                     "claims", Map.of()
             ));
-            monitor.debug("HTTP DP: sending DataFlowStartMessage for processId=" + processId);
+            monitor.debug("HTTP DP: sending DataFlowStartMessage for dataFlowId=" + dataFlowId);
             var response = post(dataPlaneUrl + "/dataflows/start", body);
             return parseDataFlowResult(response);
         } catch (IOException e) {
@@ -103,21 +103,21 @@ public class HttpDataPlaneClient implements DataPlaneClient {
     }
 
     @Override
-    public DataFlowResult startWithDataAddress(boolean async, String processId, String agreementId, String datasetId, String profile, Map<String, Object> dataAddress) {
+    public DataFlowResult startWithDataAddress(boolean async, String dataFlowId, String agreementId, String datasetId, String profile, Map<String, Object> dataAddress) {
         try {
             var messageFields = new java.util.HashMap<String, Object>();
             messageFields.put("messageId", UUID.randomUUID().toString());
             messageFields.put("participantId", participantId);
             messageFields.put("counterPartyId", counterPartyId);
             messageFields.put("dataspaceContext", "tck-dataspace");
-            messageFields.put("processId", processId);
+            messageFields.put("dataFlowId", dataFlowId);
             messageFields.put("agreementId", agreementId);
             messageFields.put("datasetId", datasetId);
             messageFields.put("profile", profile);
             messageFields.put("claims", Map.of());
             messageFields.put("dataAddress", dataAddress);
             var body = mapper.writeValueAsString(messageFields);
-            monitor.debug("HTTP DP: sending DataFlowStartMessage (with DataAddress) for processId=" + processId);
+            monitor.debug("HTTP DP: sending DataFlowStartMessage (with DataAddress) for dataFlowId=" + dataFlowId);
             var response = post(dataPlaneUrl + "/dataflows/start", body);
             return parseDataFlowResult(response);
         } catch (IOException e) {
@@ -243,7 +243,7 @@ public class HttpDataPlaneClient implements DataPlaneClient {
     }
 
     @Override
-    public void sendCompletedCallback(String processId, String dataFlowId) {
+    public void sendCompletedCallback(String dataFlowId) {
         // the real data plane sends this callback autonomously; nothing to trigger over HTTP
     }
 

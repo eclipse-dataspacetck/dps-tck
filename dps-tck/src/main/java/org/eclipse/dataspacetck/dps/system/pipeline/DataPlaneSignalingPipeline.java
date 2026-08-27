@@ -49,7 +49,6 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
     private static final String COMPLETED_CALLBACK_PATH_PATTERN = "/transfers/[^/]+/dataflow/completed";
 
     private final DataPlaneClient dataPlaneClient;
-    private final AtomicReference<String> capturedProcessId = new AtomicReference<>();
     private final AtomicReference<DataPlaneClient.DataFlowResult> capturedDataFlow = new AtomicReference<>();
     private final AtomicBoolean preparedCallbackReceived = new AtomicBoolean();
     private final AtomicBoolean startedCallbackReceived = new AtomicBoolean();
@@ -184,9 +183,8 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
     public DataPlaneSignalingPipeline triggerDataPlaneCompletedCallback() {
         stages.add(() -> {
             var dataFlowId = capturedDataFlow.get().dataFlowId();
-            var processId = capturedProcessId.get();
             monitor.debug("TCK CP: triggering data plane completed callback for dataFlowId=" + dataFlowId);
-            dataPlaneClient.sendCompletedCallback(processId, dataFlowId);
+            dataPlaneClient.sendCompletedCallback(dataFlowId);
         });
         return this;
     }
@@ -219,10 +217,9 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
     }
 
     private void sendDataFlowPrepareMessage(boolean async, String agreementId, String datasetId, String profile) {
-        var processId = UUID.randomUUID().toString();
-        capturedProcessId.set(processId);
-        monitor.debug("TCK CP: sending DataFlowPrepareMessage for processId=" + processId);
-        var result = dataPlaneClient.prepare(async, processId, agreementId, datasetId, profile);
+        var dataFlowId = UUID.randomUUID().toString();
+        monitor.debug("TCK CP: sending DataFlowPrepareMessage for dataFlowId=" + dataFlowId);
+        var result = dataPlaneClient.prepare(async, dataFlowId, agreementId, datasetId, profile);
         if (result == null || result.dataFlowId() == null) {
             throw new RuntimeException("DataFlowPrepareMessage response missing dataFlowId");
         }
@@ -235,10 +232,9 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
     }
 
     private void sendDataFlowStartMessage(boolean async, String agreementId, String datasetId, String profile) {
-        var processId = UUID.randomUUID().toString();
-        capturedProcessId.set(processId);
-        monitor.debug("TCK CP: sending DataFlowStartMessage for processId=" + processId);
-        var result = dataPlaneClient.start(async, processId, agreementId, datasetId, profile);
+        var dataFlowId = UUID.randomUUID().toString();
+        monitor.debug("TCK CP: sending DataFlowStartMessage for dataFlowId=" + dataFlowId);
+        var result = dataPlaneClient.start(async, dataFlowId, agreementId, datasetId, profile);
         if (result == null || result.dataFlowId() == null) {
             throw new RuntimeException("DataFlowStartMessage response missing dataFlowId");
         }
@@ -261,10 +257,9 @@ public class DataPlaneSignalingPipeline extends AbstractAsyncPipeline<DataPlaneS
     }
 
     private void sendStartWithDataAddress(boolean async, String agreementId, String datasetId, String profile, Map<String, Object> dataAddress, String label) {
-        var processId = UUID.randomUUID().toString();
-        capturedProcessId.set(processId);
-        monitor.debug("TCK CP: sending " + label + " for processId=" + processId);
-        var result = dataPlaneClient.startWithDataAddress(async, processId, agreementId, datasetId, profile, dataAddress);
+        var dataFlowId = UUID.randomUUID().toString();
+        monitor.debug("TCK CP: sending " + label + " for dataFlowId=" + dataFlowId);
+        var result = dataPlaneClient.startWithDataAddress(async, dataFlowId, agreementId, datasetId, profile, dataAddress);
         if (result == null || result.dataFlowId() == null) {
             throw new RuntimeException(label + " response missing dataFlowId");
         }

@@ -61,12 +61,11 @@ public class LocalDataPlaneConnector {
         this.providerDid = providerDid;
     }
 
-    public DataFlowResult handlePrepare(String callbackAddress, String processId, boolean async, String profile) {
-        var dataFlowId = UUID.randomUUID().toString();
+    public DataFlowResult handlePrepare(String callbackAddress, String dataFlowId, boolean async, String profile) {
         if (async) {
             dataFlowStates.put(dataFlowId, "PREPARING");
-            monitor.debug("Local DP: handling async prepare for processId=" + processId + ", dataFlowId=" + dataFlowId);
-            var url = callbackAddress + "/transfers/" + processId + "/dataflow/prepared";
+            monitor.debug("Local DP: handling async prepare for dataFlowId=" + dataFlowId + ", dataFlowId=" + dataFlowId);
+            var url = callbackAddress + "/transfers/" + dataFlowId + "/dataflow/prepared";
             var message = serialize(Map.of("messageId", UUID.randomUUID().toString(), "dataFlowId", dataFlowId, "state", "PREPARED"));
             var description = "DataFlowStatusMessage (PREPARED) callback";
             sendAsync(url, message, description).whenComplete((c, t) -> {
@@ -77,21 +76,20 @@ public class LocalDataPlaneConnector {
             return new DataFlowResult(dataFlowId, "PREPARING", null);
         } else {
             dataFlowStates.put(dataFlowId, "PREPARED");
-            monitor.debug("Local DP: handling sync prepare for processId=" + processId + ", dataFlowId=" + dataFlowId);
+            monitor.debug("Local DP: handling sync prepare for dataFlowId=" + dataFlowId + ", dataFlowId=" + dataFlowId);
             // In push flows the consumer data plane generates the DataAddress the provider will push to.
-            Map<String, Object> dataAddress = profile.endsWith("-push")
+            var dataAddress = profile.endsWith("-push")
                     ? HttpDataAddresses.httpPush("https://consumer.example.com/ingest/" + dataFlowId, UUID.randomUUID().toString())
                     : null;
             return new DataFlowResult(dataFlowId, "PREPARED", dataAddress);
         }
     }
 
-    public DataFlowResult handleStart(String callbackAddress, String processId, boolean asyncMode, String profile) {
-        var dataFlowId = UUID.randomUUID().toString();
+    public DataFlowResult handleStart(String callbackAddress, String dataFlowId, boolean asyncMode, String profile) {
         if (asyncMode) {
             dataFlowStates.put(dataFlowId, "STARTING");
-            monitor.debug("Local DP: handling async start for processId=" + processId + ", dataFlowId=" + dataFlowId);
-            var url = callbackAddress + "/transfers/" + processId + "/dataflow/started";
+            monitor.debug("Local DP: handling async start for dataFlowId=" + dataFlowId + ", dataFlowId=" + dataFlowId);
+            var url = callbackAddress + "/transfers/" + dataFlowId + "/dataflow/started";
             var message = serialize(Map.of("messageId", UUID.randomUUID().toString(), "dataFlowId", dataFlowId, "state", "STARTED"));
             var description = "DataFlowStatusMessage (STARTED) callback";
             sendAsync(url, message, description).whenComplete((c, t) -> {
@@ -102,7 +100,7 @@ public class LocalDataPlaneConnector {
             return new DataFlowResult(dataFlowId, "STARTING", null);
         } else {
             dataFlowStates.put(dataFlowId, "STARTED");
-            monitor.debug("Local DP: handling sync start for processId=" + processId + ", dataFlowId=" + dataFlowId);
+            monitor.debug("Local DP: handling sync start for dataFlowId=" + dataFlowId + ", dataFlowId=" + dataFlowId);
             // In pull flows the provider data plane generates the DataAddress the consumer will pull from,
             // including the Token Renewal profile properties.
             Map<String, Object> dataAddress = null;
@@ -229,9 +227,9 @@ public class LocalDataPlaneConnector {
         dataFlowStates.put(dataFlowId, "COMPLETED");
     }
 
-    public void sendCompletedCallback(String callbackAddress, String processId, String dataFlowId) {
+    public void sendCompletedCallback(String callbackAddress, String dataFlowId) {
         monitor.debug("Local DP: sending completed callback for dataFlowId=" + dataFlowId);
-        sendAsync(callbackAddress + "/transfers/" + processId + "/dataflow/completed",
+        sendAsync(callbackAddress + "/transfers/" + dataFlowId + "/dataflow/completed",
                 serialize(Map.of("messageId", UUID.randomUUID().toString(), "dataFlowId", dataFlowId, "state", "COMPLETED")),
                 "DataFlowStatusMessage (COMPLETED) callback");
     }

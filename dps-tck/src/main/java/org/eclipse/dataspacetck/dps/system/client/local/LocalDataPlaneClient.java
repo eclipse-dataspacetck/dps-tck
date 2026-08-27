@@ -37,18 +37,18 @@ public class LocalDataPlaneClient implements DataPlaneClient {
     }
 
     @Override
-    public DataFlowResult prepare(boolean async, String processId, String agreementId, String datasetId, String profile) {
-        return connector.handlePrepare(callbackEndpoint.getAddress(), processId, async, profile);
+    public DataFlowResult prepare(boolean async, String dataFlowId, String agreementId, String datasetId, String profile) {
+        return connector.handlePrepare(callbackEndpoint.getAddress(), dataFlowId, async, profile);
     }
 
     @Override
-    public DataFlowResult start(boolean async, String processId, String agreementId, String datasetId, String profile) {
-        return connector.handleStart(callbackEndpoint.getAddress(), processId, async, profile);
+    public DataFlowResult start(boolean async, String dataFlowId, String agreementId, String datasetId, String profile) {
+        return connector.handleStart(callbackEndpoint.getAddress(), dataFlowId, async, profile);
     }
 
     @Override
-    public DataFlowResult startWithDataAddress(boolean async, String processId, String agreementId, String datasetId, String profile, Map<String, Object> dataAddress) {
-        return connector.handleStart(callbackEndpoint.getAddress(), processId, async, profile);
+    public DataFlowResult startWithDataAddress(boolean async, String dataFlowId, String agreementId, String datasetId, String profile, Map<String, Object> dataAddress) {
+        return connector.handleStart(callbackEndpoint.getAddress(), dataFlowId, async, profile);
     }
 
     @Override
@@ -95,8 +95,8 @@ public class LocalDataPlaneClient implements DataPlaneClient {
     }
 
     @Override
-    public void sendCompletedCallback(String processId, String dataFlowId) {
-        connector.sendCompletedCallback(callbackEndpoint.getAddress(), processId, dataFlowId);
+    public void sendCompletedCallback(String dataFlowId) {
+        connector.sendCompletedCallback(callbackEndpoint.getAddress(), dataFlowId);
     }
 
     @Override

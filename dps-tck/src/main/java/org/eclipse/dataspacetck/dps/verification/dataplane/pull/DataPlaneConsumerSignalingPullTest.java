@@ -159,7 +159,7 @@ public class DataPlaneConsumerSignalingPullTest {
 
             TCK->>CUT: DataFlowStartMessage (POST /dataflows/start)
             CUT-->>TCK: 200 OK + DataFlowStatusMessage (state=STARTED)
-            CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{processId}/dataflow/completed, state=COMPLETED)
+            CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{dataFlowId}/dataflow/completed, state=COMPLETED)
             TCK-->>CUT: 200 OK
             """)
     public void dp_c_pull_03_01() {
@@ -183,7 +183,7 @@ public class DataPlaneConsumerSignalingPullTest {
 
             TCK->>CUT: DataFlowPrepareMessage (POST /dataflows/prepare)
             CUT-->>TCK: 202 Accepted + DataFlowStatusMessage (state=PREPARING)
-            CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{processId}/dataflow/prepared, state=PREPARED)
+            CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{dataFlowId}/dataflow/prepared, state=PREPARED)
             CUT-->>TCK: 200 OK
             """)
     public void dp_c_pull_04_01() {

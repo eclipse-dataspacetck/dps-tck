@@ -2,7 +2,7 @@
 
 Technology Compatibility Kit for the Dataplane Signaling Protocol (DPS). This project verifies that a control plane implementation correctly implements the DPS specification by executing a suite of compliance tests against it.
 
-Specs: https://eclipse-dataplane-signaling.github.io/dataplane-signaling/v1.0-RC3
+Specs: https://eclipse-dataplane-signaling.github.io/dataplane-signaling/v1.0-RC4
 
 ## Overview
 

@@ -188,7 +188,7 @@ public class DataPlaneConsumerSignalingPushTest {
 
             TCK->>CUT: DataFlowPrepareMessage (POST /dataflows/prepare)
             CUT-->>TCK: 202 Accepted + DataFlowStatusMessage (state=PREPARING)
-            CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{processId}/dataflow/prepared, state=PREPARED)
+            CUT->>TCK: DataFlowStatusMessage callback (POST /transfers/{dataFlowId}/dataflow/prepared, state=PREPARED)
             TCK-->>CUT: 200 OK
             """)
     public void dp_c_push_04_01() {

@@ -73,10 +73,10 @@ public class ControlPlaneConsumerSignalingTest {
             CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
             TCK-->>CUT: 200 OK + providerPid
             TCK->>CUT: DSP TransferStartMessage
-            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started)
+            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{dataFlowId}/started)
             TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferCompletionMessage
-            CUT->>TCK: Completed notification (POST /dataflows/{processId}/completed)
+            CUT->>TCK: Completed notification (POST /dataflows/{dataFlowId}/completed)
             """)
     public void cp_c_01_01() {
         signalingPipeline
@@ -109,10 +109,10 @@ public class ControlPlaneConsumerSignalingTest {
             CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
             TCK-->>CUT: 200 OK + providerPid
             TCK->>CUT: DSP TransferStartMessage
-            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started)
+            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{dataFlowId}/started)
             TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferTerminationMessage
-            CUT->>TCK: Terminate notification (POST /dataflows/{processId}/terminate)
+            CUT->>TCK: Terminate notification (POST /dataflows/{dataFlowId}/terminate)
             """)
     public void cp_c_01_02() {
         signalingPipeline
@@ -145,16 +145,16 @@ public class ControlPlaneConsumerSignalingTest {
             CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
             TCK-->>CUT: 200 OK + providerPid
             TCK->>CUT: DSP TransferStartMessage
-            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started)
+            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{dataFlowId}/started)
             TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferSuspensionMessage
-            CUT->>TCK: DataFlowSuspendMessage (POST /dataflows/{processId}/suspend)
+            CUT->>TCK: DataFlowSuspendMessage (POST /dataflows/{dataFlowId}/suspend)
             TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferStartMessage
-            CUT->>TCK: DataFlowResumeMessage (POST /dataflows/{processId}/resume)
+            CUT->>TCK: DataFlowResumeMessage (POST /dataflows/{dataFlowId}/resume)
             TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=STARTED)
             TCK->>CUT: DSP TransferCompletionMessage
-            CUT->>TCK: Completed notification (POST /dataflows/{processId}/completed)
+            CUT->>TCK: Completed notification (POST /dataflows/{dataFlowId}/completed)
             """)
     public void cp_c_02_01() {
         signalingPipeline
@@ -193,13 +193,13 @@ public class ControlPlaneConsumerSignalingTest {
             CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
             TCK-->>CUT: 200 OK + providerPid
             TCK->>CUT: DSP TransferStartMessage
-            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started)
+            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{dataFlowId}/started)
             TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferSuspensionMessage
-            CUT->>TCK: DataFlowSuspendMessage (POST /dataflows/{processId}/suspend)
+            CUT->>TCK: DataFlowSuspendMessage (POST /dataflows/{dataFlowId}/suspend)
             TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferTerminationMessage
-            CUT->>TCK: Terminate notification (POST /dataflows/{processId}/terminate)
+            CUT->>TCK: Terminate notification (POST /dataflows/{dataFlowId}/terminate)
             """)
     public void cp_c_02_02() {
         signalingPipeline
@@ -232,15 +232,15 @@ public class ControlPlaneConsumerSignalingTest {
             TCK->>CUT: Trigger async data flow preparation (internal signal)
             CUT->>TCK: DataFlowPrepareMessage (POST /dataflows/prepare)
             TCK-->>CUT: 202 Accepted + DataFlowStatusMessage (state=PREPARING)
-            TCK->>CUT: DataFlowStatusMessage callback (POST /transfers/{processId}/dataflow/prepared, state=PREPARED)
+            TCK->>CUT: DataFlowStatusMessage callback (POST /transfers/{dataFlowId}/dataflow/prepared, state=PREPARED)
             CUT-->>TCK: 200 OK
             CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
             TCK-->>CUT: 200 OK + providerPid
             TCK->>CUT: DSP TransferStartMessage
-            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{processId}/started)
+            CUT->>TCK: DataFlowStartedNotificationMessage (POST /dataflows/{dataFlowId}/started)
             TCK-->>CUT: 200 OK
             TCK->>CUT: DSP TransferCompletionMessage
-            CUT->>TCK: Completed notification (POST /dataflows/{processId}/completed)
+            CUT->>TCK: Completed notification (POST /dataflows/{dataFlowId}/completed)
             """)
     public void cp_c_03_01() {
         signalingPipeline

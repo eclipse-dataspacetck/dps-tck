@@ -136,11 +136,11 @@ public class HttpDspClient implements DspClient {
         }
     }
 
-    private static @NonNull Map<String, String> message(String processId, String type) {
+    private static @NonNull Map<String, String> message(String dataFlowId, String type) {
         return Map.of(
                 "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
                 "@type", type,
-                "providerPid", processId,
+                "providerPid", dataFlowId,
                 "consumerPid", UUID.randomUUID().toString()
         );
     }
