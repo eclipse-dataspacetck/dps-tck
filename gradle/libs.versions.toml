@@ -4,7 +4,7 @@ format.version = "1.1"
 [versions]
 assertj = "3.27.7"
 awaitility = "4.3.0"
-bouncycastle = "1.85.2"
+bouncycastle = "1.86"
 dcp-tck = "1.2.1"
 jackson = "3.2.2"
 json-schema-validator = "3.0.7"
