@@ -1,0 +1,27 @@
+#
+#  Copyright (c) 2026 Think-it GmbH
+#
+#  This program and the accompanying materials are made available under the
+#  terms of the Apache License, Version 2.0 which is available at
+#    https://www.apache.org/licenses/LICENSE-2.0
+#
+#  SPDX-License-Identifier: Apache-2.0
+#
+#  Contributors:
+#    Think-it GmbH - initial API and implementation
+#
+
+---
+name: Scan Pull Request
+
+# Thin caller. The actual checks live centrally in the org's .github repo so
+# they are maintained in a single place:
+#   eclipse-dataspacetck/.github/.github/workflows/scan-pull-request.yaml
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  scan:
+    uses: eclipse-dataspacetck/.github/.github/workflows/scan-pull-request.yaml@main
