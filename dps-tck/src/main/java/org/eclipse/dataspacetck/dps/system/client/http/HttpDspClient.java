@@ -62,49 +62,50 @@ public class HttpDspClient implements DspClient {
     }
 
     @Override
-    public void sendTransferStartMessage(String senderId, String callbackAddress, String processId) {
-        var requestBody = message(processId, "TransferStartMessage");
+    public void sendTransferStartMessage(String senderId, String callbackAddress, String processId, ProcessIds pids) {
+        var requestBody = message(pids, "TransferStartMessage");
         send(callbackAddress + "/transfers/" + processId + "/start", requestBody, senderId);
     }
 
     @Override
-    public void sendTransferStartMessage(String senderId, String callbackAddress, String processId, Map<String, Object> dataAddress) {
-        var requestBody = new HashMap<String, Object>(message(processId, "TransferStartMessage"));
+    public void sendTransferStartMessage(String senderId, String callbackAddress, String processId, ProcessIds pids, Map<String, Object> dataAddress) {
+        var requestBody = new HashMap<String, Object>(message(pids, "TransferStartMessage"));
         requestBody.put("dataAddress", dataAddress);
         send(callbackAddress + "/transfers/" + processId + "/start", requestBody, senderId);
     }
 
     @Override
-    public void sendTransferCompletionMessage(String senderId, String callbackAddress, String processId) {
-        var requestBody = message(processId, "TransferCompletionMessage");
+    public void sendTransferCompletionMessage(String senderId, String callbackAddress, String processId, ProcessIds pids) {
+        var requestBody = message(pids, "TransferCompletionMessage");
         send(callbackAddress + "/transfers/" + processId + "/completion", requestBody, senderId);
     }
 
     @Override
-    public void sendTransferTerminationMessage(String senderId, String callbackAddress, String processId) {
-        var requestBody = message(processId, "TransferTerminationMessage");
+    public void sendTransferTerminationMessage(String senderId, String callbackAddress, String processId, ProcessIds pids) {
+        var requestBody = message(pids, "TransferTerminationMessage");
         send(callbackAddress + "/transfers/" + processId + "/termination", requestBody, senderId);
     }
 
     @Override
-    public void sendTransferSuspensionMessage(String senderId, String callbackAddress, String processId) {
-        var requestBody = message(processId, "TransferSuspensionMessage");
+    public void sendTransferSuspensionMessage(String senderId, String callbackAddress, String processId, ProcessIds pids) {
+        var requestBody = message(pids, "TransferSuspensionMessage");
         send(callbackAddress + "/transfers/" + processId + "/suspension", requestBody, senderId);
     }
 
     @Override
     public TransferRequestResult sendTransferRequestMessage(String senderId, String address, String agreementId, String profile) {
+        var consumerPid = UUID.randomUUID().toString();
         var requestBody = Map.of(
                 "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
                 "@type", "TransferRequestMessage",
-                "consumerPid", UUID.randomUUID().toString(),
+                "consumerPid", consumerPid,
                 "callbackAddress", address,
                 "agreementId", agreementId,
                 "format", profile
         );
         var response = send(initialDspUrl + "/transfers/request", requestBody, senderId);
         var providerPid = response.get("providerPid").toString();
-        return new TransferRequestResult(providerPid, initialDspUrl);
+        return new TransferRequestResult(providerPid, consumerPid, initialDspUrl);
     }
 
     private Map<String, Object> send(String url, Map<String, ?> requestBody, String senderId) {
@@ -144,12 +145,12 @@ public class HttpDspClient implements DspClient {
         }
     }
 
-    private static @NonNull Map<String, String> message(String dataFlowId, String type) {
+    private static @NonNull Map<String, String> message(ProcessIds pids, String type) {
         return Map.of(
                 "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
                 "@type", type,
-                "providerPid", dataFlowId,
-                "consumerPid", UUID.randomUUID().toString()
+                "providerPid", pids.providerPid(),
+                "consumerPid", pids.consumerPid()
         );
     }
 

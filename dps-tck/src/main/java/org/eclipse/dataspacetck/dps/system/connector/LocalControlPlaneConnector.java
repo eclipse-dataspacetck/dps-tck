@@ -19,6 +19,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import org.eclipse.dataspacetck.core.spi.boot.Monitor;
+import org.eclipse.dataspacetck.dps.system.client.DspClient.ProcessIds;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -48,6 +49,8 @@ public class LocalControlPlaneConnector {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final Map<String, String> transferStates = new ConcurrentHashMap<>();
+    /** Both process ids of every transfer, by this connector's own process id. */
+    private final Map<String, ProcessIds> processIds = new ConcurrentHashMap<>();
     private final AtomicReference<String> dataPlaneBaseUrl = new AtomicReference<>();
     private final AtomicReference<String> pendingPrepareAgreementId = new AtomicReference<>();
     private final OkHttpClient httpClient = new OkHttpClient();
@@ -103,6 +106,17 @@ public class LocalControlPlaneConnector {
     public void receiveStartedCallback(String dataFlowId) {
         monitor.debug("Local CUT: received STARTED callback for dataFlowId=" + dataFlowId);
         transferStates.put(dataFlowId, "STARTED");
+    }
+
+    /**
+     * Fails if a message for {@code processId} carries other process ids than the ones exchanged in its
+     * {@code TransferRequestMessage} and response, as DSP requires both to identify the process.
+     */
+    public void verifyProcessIds(String processId, ProcessIds pids) {
+        var expected = processIds.get(processId);
+        if (expected != null && !expected.equals(pids)) {
+            throw new IllegalStateException("Local CUT: message for process %s carries %s, expected %s".formatted(processId, pids, expected));
+        }
     }
 
     public String getTransferState(String dataFlowId) {
@@ -175,9 +189,10 @@ public class LocalControlPlaneConnector {
      * Simulates the CUT receiving a DSP TransferRequestMessage from the TCK.
      * Returns a providerPid and asynchronously sends a DataFlowStartMessage to the TCK.
      */
-    public String receiveTransferRequestMessage(String dataPlaneUrl, String agreementId) {
+    public String receiveTransferRequestMessage(String dataPlaneUrl, String agreementId, String consumerPid) {
         dataPlaneBaseUrl.set(dataPlaneUrl);
         var providerPid = UUID.randomUUID().toString();
+        processIds.put(providerPid, new ProcessIds(consumerPid, providerPid));
         transferStates.put(providerPid, "REQUESTED");
         monitor.debug("Local CUT: received TransferRequestMessage, providerPid=" + providerPid);
 
@@ -229,7 +244,8 @@ public class LocalControlPlaneConnector {
                     "agreementId", agreementId,
                     "format", "HttpData-PULL"
             );
-            post(dataPlaneUrl + "/transfers/request", serialize(message));
+            var response = MAPPER.readValue(postForBody(dataPlaneUrl + "/transfers/request", serialize(message)), Map.class);
+            processIds.put(consumerPid, new ProcessIds(consumerPid, (String) response.get("providerPid")));
             monitor.debug("Local CUT: sent TransferRequestMessage with consumerPid=" + consumerPid);
         } catch (IOException e) {
             throw new RuntimeException("Failed to send TransferRequestMessage", e);
@@ -249,6 +265,19 @@ public class LocalControlPlaneConnector {
                 monitor.enableError().message("Local CUT: failed to send " + description + ": " + e.getMessage());
             }
         });
+    }
+
+    private String postForBody(String url, String body) throws IOException {
+        var request = new Request.Builder()
+                .url(url)
+                .post(RequestBody.create(body, JSON))
+                .build();
+        try (var response = httpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new RuntimeException("HTTP " + response.code() + " from " + url + ". Body: " + response.body().string());
+            }
+            return response.body().string();
+        }
     }
 
     private void post(String url, String body) throws IOException {

@@ -21,6 +21,7 @@ import org.eclipse.dataspacetck.core.api.system.HandlerResponse;
 import org.eclipse.dataspacetck.core.spi.boot.Monitor;
 import org.eclipse.dataspacetck.dps.system.client.ControlPlaneClient;
 import org.eclipse.dataspacetck.dps.system.client.DspClient;
+import org.eclipse.dataspacetck.dps.system.client.DspClient.ProcessIds;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -30,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -224,7 +226,8 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
         stages.add(() -> {
             monitor.debug("Send DSP TransferRequestMessage");
             var requestResult = dspClient.sendTransferRequestMessage(senderId, endpoint.getAddress(), agreementId, profile);
-            lastCounterParty.set(new CounterParty(requestResult.processId(), requestResult.address()));
+            lastCounterParty.set(new CounterParty(requestResult.processId(), requestResult.address(),
+                    new ProcessIds(requestResult.consumerPid(), requestResult.processId())));
         });
         return this;
     }
@@ -236,7 +239,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                 throw new RuntimeException("Cannot signal start: no counter party data has been set");
             }
             monitor.debug("TCK. DSP: send TransferStartMessage for dataFlowId=" + counterParty.dataFlowId());
-            dspClient.sendTransferStartMessage(senderId, counterParty.address(), counterParty.dataFlowId());
+            dspClient.sendTransferStartMessage(senderId, counterParty.address(), counterParty.dataFlowId(), counterParty.pids());
         });
         return this;
     }
@@ -251,7 +254,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                 throw new RuntimeException("Cannot signal start: no counter party data has been set");
             }
             monitor.debug("TCK. DSP: send TransferStartMessage with a data address for dataFlowId=" + counterParty.dataFlowId());
-            dspClient.sendTransferStartMessage(senderId, counterParty.address(), counterParty.dataFlowId(), dataAddress);
+            dspClient.sendTransferStartMessage(senderId, counterParty.address(), counterParty.dataFlowId(), counterParty.pids(), dataAddress);
         });
         return this;
     }
@@ -290,7 +293,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                 throw new RuntimeException("Cannot signal completion: no counter party data has been set");
             }
             monitor.debug("TCK. DSP: send TransferCompletionMessage for dataFlowId=" + counterParty.dataFlowId());
-            dspClient.sendTransferCompletionMessage(senderId, counterParty.address(), counterParty.dataFlowId());
+            dspClient.sendTransferCompletionMessage(senderId, counterParty.address(), counterParty.dataFlowId(), counterParty.pids());
         });
         return this;
     }
@@ -302,7 +305,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                 throw new RuntimeException("Cannot signal termination: no counter party data has been set");
             }
             monitor.debug("TCK. DSP: send TransferTerminationMessage for dataFlowId=" + counterParty.dataFlowId());
-            dspClient.sendTransferTerminationMessage(senderId, counterParty.address(), counterParty.dataFlowId());
+            dspClient.sendTransferTerminationMessage(senderId, counterParty.address(), counterParty.dataFlowId(), counterParty.pids());
         });
         return this;
     }
@@ -314,7 +317,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                 throw new RuntimeException("Cannot signal suspension: no counter party data has been set");
             }
             monitor.debug("TCK. DSP: send TransferSuspensionMessage for dataFlowId=" + counterParty.dataFlowId());
-            dspClient.sendTransferSuspensionMessage(senderId, counterParty.address(), counterParty.dataFlowId());
+            dspClient.sendTransferSuspensionMessage(senderId, counterParty.address(), counterParty.dataFlowId(), counterParty.pids());
         });
         return this;
     }
@@ -378,12 +381,13 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                 lastDspReceivedMessage.set(message);
                 var consumerProcessId = (String) message.get("consumerPid");
                 var callbackAddress = (String) message.get("callbackAddress");
-                lastCounterParty.set(new CounterParty(consumerProcessId, callbackAddress));
+                var providerProcessId = UUID.randomUUID().toString();
+                lastCounterParty.set(new CounterParty(consumerProcessId, callbackAddress, new ProcessIds(consumerProcessId, providerProcessId)));
                 monitor.debug("Received TransferRequestMessage from control plane: %s, dataFlowId=%s".formatted(message, consumerProcessId));
                 return new HandlerResponse(200, mapper.writeValueAsString(Map.of(
                         "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
                         "@type", "TransferProcess",
-                        "providerPid", UUID.randomUUID().toString(),
+                        "providerPid", providerProcessId,
                         "consumerPid", consumerProcessId
                 )));
             } catch (JacksonException e) {
@@ -404,7 +408,8 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                         "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
                         "@type", "TransferProcess",
                         "providerPid", providerProcessId,
-                        "consumerPid", UUID.randomUUID()
+                        "consumerPid", Optional.ofNullable(lastCounterParty.get()).map(c -> c.pids().consumerPid())
+                                .orElseGet(() -> (String) message.get("consumerPid"))
                 )));
             } catch (JacksonException e) {
                 return new HandlerResponse(400, "Failed to parse TransferStartMessage: " + e.getMessage());
@@ -445,5 +450,9 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
 
     record ReceivedDpsMessage(String path, DpsMessage type, Map<String, Object> content) {}
 
-    record CounterParty(String dataFlowId, String address) {}
+    /**
+     * The control plane under test as counter-party: its own process id (the {@code dataFlowId} and URL path id),
+     * its DSP address, and both process ids of the transfer.
+     */
+    record CounterParty(String dataFlowId, String address, ProcessIds pids) {}
 }
