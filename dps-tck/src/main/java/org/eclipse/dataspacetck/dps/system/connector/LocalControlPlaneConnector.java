@@ -22,6 +22,7 @@ import org.eclipse.dataspacetck.core.spi.boot.Monitor;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -109,6 +110,14 @@ public class LocalControlPlaneConnector {
     }
 
     public void receiveTransferStart(String dataFlowId) {
+        receiveTransferStart(dataFlowId, null);
+    }
+
+    /**
+     * A {@code TransferStartMessage} arrived; for a pull transfer it carries the provider's data address, which is
+     * passed on to the data plane in the started notification.
+     */
+    public void receiveTransferStart(String dataFlowId, Map<String, Object> dataAddress) {
         var currentState = transferStates.get(dataFlowId);
         if (currentState != null && currentState.equals("SUSPENDED")) {
             monitor.debug("Local CUT: transfer resumed for dataFlowId=" + dataFlowId);
@@ -123,7 +132,10 @@ public class LocalControlPlaneConnector {
             transferStates.put(dataFlowId, "STARTED");
             var baseUrl = dataPlaneBaseUrl.get();
             if (baseUrl != null) {
-                var message = Map.of("messageId", UUID.randomUUID().toString());
+                var message = new HashMap<String, Object>(Map.of("messageId", UUID.randomUUID().toString()));
+                if (dataAddress != null) {
+                    message.put("dataAddress", dataAddress);
+                }
                 sendAsync(baseUrl + "/dataflows/" + dataFlowId + "/started", serialize(message), "DataFlowStartedNotificationMessage");
             }
         }

@@ -17,6 +17,8 @@ package org.eclipse.dataspacetck.dps.system.client.local;
 import org.eclipse.dataspacetck.dps.system.client.DspClient;
 import org.eclipse.dataspacetck.dps.system.connector.LocalControlPlaneConnector;
 
+import java.util.Map;
+
 /**
  * In-process implementation of {@link DspClient} backed by a {@link LocalControlPlaneConnector}.
  * Transfer state is kept in-memory; messages trigger state transitions directly.
@@ -37,6 +39,11 @@ public class LocalDspClient implements DspClient {
     @Override
     public void sendTransferStartMessage(String senderId, String callbackAddress, String processId) {
         connector.receiveTransferStart(processId);
+    }
+
+    @Override
+    public void sendTransferStartMessage(String senderId, String callbackAddress, String processId, Map<String, Object> dataAddress) {
+        connector.receiveTransferStart(processId, dataAddress);
     }
 
     @Override

@@ -14,11 +14,19 @@
 
 package org.eclipse.dataspacetck.dps.system.client;
 
+import java.util.Map;
+
 public interface DspClient {
 
     String dspTransferState(String senderId, String callbackAddress, String processId);
 
     void sendTransferStartMessage(String senderId, String callbackAddress, String processId);
+
+    /**
+     * Sends a {@code TransferStartMessage} carrying the provider's {@code dataAddress} (DSP format), as a provider does
+     * for pull transfers.
+     */
+    void sendTransferStartMessage(String senderId, String callbackAddress, String processId, Map<String, Object> dataAddress);
 
     void sendTransferCompletionMessage(String senderId, String callbackAddress, String processId);
 

@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import static java.util.UUID.randomUUID;
+import static org.eclipse.dataspacetck.dps.system.pipeline.HttpDataAddresses.dspHttpPull;
 
 /**
  * Verifies compliance of a consumer control plane with the Data Plane Signaling specification.
@@ -129,6 +130,44 @@ public class ControlPlaneConsumerSignalingTest {
                 .sendTransferTerminationMessage(tckParticipantId)
                 .thenWaitForTransferToBeInState("TERMINATED", tckParticipantId)
                 .thenWaitForTerminateMessage()
+                .execute();
+    }
+
+    @MandatoryTest
+    @Tag("sync")
+    @DisplayName("CP_C:01-03: Verify the DataAddress of a TransferStartMessage reaches the data plane in the started notification")
+    @TestSequenceDiagram("""
+            participant TCK as Technology Compatibility Kit (consumer data plane + provider CP)
+            participant CUT as Consumer Control-Plane Under Test
+
+            TCK->>CUT: Trigger data flow preparation (internal signal)
+            CUT->>TCK: DataFlowPrepareMessage (POST /dataflows/prepare)
+            TCK-->>CUT: 200 OK + DataFlowStatusMessage (state=PREPARED)
+            CUT->>TCK: DSP TransferRequestMessage (POST /transfers/request)
+            TCK-->>CUT: 200 OK + providerPid
+            TCK->>CUT: DSP TransferStartMessage with an http-pull dataAddress (endpoint + endpointProperties)
+            CUT->>TCK: DataFlowStartedNotificationMessage with the same dataAddress (POST /dataflows/{dataFlowId}/started)
+            TCK-->>CUT: 200 OK
+            TCK->>CUT: DSP TransferCompletionMessage
+            CUT->>TCK: Completed notification (POST /dataflows/{dataFlowId}/completed)
+            """)
+    public void cp_c_01_03() {
+        var dataAddress = dspHttpPull("https://provider.example.com/data/" + randomUUID(), randomUUID().toString());
+        signalingPipeline
+                .expectDataFlowPrepareMessage()
+                .triggerDataFlowPreparation(agreementId, datasetId)
+                .thenWaitForPrepareMessage()
+                .thenWaitForTransferRequestMessage()
+                .thenWaitForTransferToBeInState("REQUESTED", tckParticipantId)
+                .expectDataFlowStartedNotificationMessage()
+                .sendTransferStartMessage(tckParticipantId, dataAddress)
+                .thenWaitForStartedNotificationMessage()
+                .thenVerifyStartedNotificationDataAddress(dataAddress)
+                .thenWaitForTransferToBeInState("STARTED", tckParticipantId)
+                .expectDataFlowCompletedMessage()
+                .sendTransferCompletionMessage(tckParticipantId)
+                .thenWaitForTransferToBeInState("COMPLETED", tckParticipantId)
+                .thenWaitForCompletedMessage()
                 .execute();
     }
 

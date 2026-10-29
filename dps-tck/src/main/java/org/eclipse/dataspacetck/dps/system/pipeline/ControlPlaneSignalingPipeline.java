@@ -26,6 +26,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -35,6 +36,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Collections.emptyMap;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowPrepareMessage;
 import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowResumeMessage;
 import static org.eclipse.dataspacetck.dps.system.pipeline.DpsMessage.DataFlowStartMessage;
@@ -237,6 +239,48 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
             dspClient.sendTransferStartMessage(senderId, counterParty.address(), counterParty.dataFlowId());
         });
         return this;
+    }
+
+    /**
+     * Sends a {@code TransferStartMessage} carrying {@code dataAddress}, as a provider does for a pull transfer.
+     */
+    public ControlPlaneSignalingPipeline sendTransferStartMessage(String senderId, Map<String, Object> dataAddress) {
+        stages.add(() -> {
+            var counterParty = lastCounterParty.get();
+            if (counterParty == null) {
+                throw new RuntimeException("Cannot signal start: no counter party data has been set");
+            }
+            monitor.debug("TCK. DSP: send TransferStartMessage with a data address for dataFlowId=" + counterParty.dataFlowId());
+            dspClient.sendTransferStartMessage(senderId, counterParty.address(), counterParty.dataFlowId(), dataAddress);
+        });
+        return this;
+    }
+
+    /**
+     * Verifies that the last {@code DataFlowStartedNotificationMessage} hands the data plane the data address the
+     * provider sent: the same endpoint type and endpoint, and every endpoint property by name and value.
+     */
+    @SuppressWarnings("unchecked")
+    public ControlPlaneSignalingPipeline thenVerifyStartedNotificationDataAddress(Map<String, Object> sent) {
+        return then(() -> {
+            var received = lastDpsReceivedMessage.get();
+            assertThat(received).as("DataFlowStartedNotificationMessage").isNotNull();
+            var dataAddress = (Map<String, Object>) received.content().get("dataAddress");
+            assertThat(dataAddress).as("dataAddress of the DataFlowStartedNotificationMessage").isNotNull();
+            assertThat(dataAddress.get("endpointType")).as("endpointType").isEqualTo(sent.get("endpointType"));
+            assertThat(dataAddress.get("endpoint")).as("endpoint").isEqualTo(sent.get("endpoint"));
+            var receivedProperties = properties(dataAddress);
+            properties(sent).forEach((name, value) ->
+                    assertThat(receivedProperties).as("endpoint property " + name).containsEntry(name, value));
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<Object, Object> properties(Map<String, Object> dataAddress) {
+        var properties = (List<Map<String, Object>>) dataAddress.getOrDefault("endpointProperties", List.of());
+        var byName = new HashMap<Object, Object>();
+        properties.forEach(p -> byName.put(p.get("name"), p.get("value")));
+        return byName;
     }
 
     public ControlPlaneSignalingPipeline sendTransferCompletionMessage(String senderId) {

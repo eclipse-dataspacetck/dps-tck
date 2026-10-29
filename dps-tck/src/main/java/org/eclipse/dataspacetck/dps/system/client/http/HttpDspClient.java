@@ -25,6 +25,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -67,6 +68,13 @@ public class HttpDspClient implements DspClient {
     }
 
     @Override
+    public void sendTransferStartMessage(String senderId, String callbackAddress, String processId, Map<String, Object> dataAddress) {
+        var requestBody = new HashMap<String, Object>(message(processId, "TransferStartMessage"));
+        requestBody.put("dataAddress", dataAddress);
+        send(callbackAddress + "/transfers/" + processId + "/start", requestBody, senderId);
+    }
+
+    @Override
     public void sendTransferCompletionMessage(String senderId, String callbackAddress, String processId) {
         var requestBody = message(processId, "TransferCompletionMessage");
         send(callbackAddress + "/transfers/" + processId + "/completion", requestBody, senderId);
@@ -99,7 +107,7 @@ public class HttpDspClient implements DspClient {
         return new TransferRequestResult(providerPid, initialDspUrl);
     }
 
-    private Map<String, Object> send(String url, Map<String, String> requestBody, String senderId) {
+    private Map<String, Object> send(String url, Map<String, ?> requestBody, String senderId) {
         try {
             monitor.debug("Send DSP " + requestBody.get("@type"));
 
