@@ -73,6 +73,17 @@ public final class HttpDataAddresses {
         return dataAddress(HTTP_PULL, endpoint, properties);
     }
 
+    /**
+     * Builds an HTTP pull data address as a provider sends it in a DSP {@code TransferStartMessage}: endpoint
+     * properties are typed {@code EndpointProperty}.
+     */
+    public static Map<String, Object> dspHttpPull(String endpoint, String token) {
+        var properties = bearerProperties(token).stream()
+                .map(p -> Map.<String, Object>of("@type", "EndpointProperty", "name", p.get("name"), "value", p.get("value")))
+                .toList();
+        return dataAddress(HTTP_PULL, endpoint, properties);
+    }
+
     private static List<Map<String, Object>> bearerProperties(String token) {
         var properties = new ArrayList<Map<String, Object>>();
         properties.add(property(AUTHORIZATION, token));
