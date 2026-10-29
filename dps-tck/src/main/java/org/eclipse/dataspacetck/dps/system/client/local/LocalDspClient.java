@@ -18,6 +18,7 @@ import org.eclipse.dataspacetck.dps.system.client.DspClient;
 import org.eclipse.dataspacetck.dps.system.connector.LocalControlPlaneConnector;
 
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * In-process implementation of {@link DspClient} backed by a {@link LocalControlPlaneConnector}.
@@ -37,33 +38,39 @@ public class LocalDspClient implements DspClient {
     }
 
     @Override
-    public void sendTransferStartMessage(String senderId, String callbackAddress, String processId) {
+    public void sendTransferStartMessage(String senderId, String callbackAddress, String processId, ProcessIds pids) {
+        connector.verifyProcessIds(processId, pids);
         connector.receiveTransferStart(processId);
     }
 
     @Override
-    public void sendTransferStartMessage(String senderId, String callbackAddress, String processId, Map<String, Object> dataAddress) {
+    public void sendTransferStartMessage(String senderId, String callbackAddress, String processId, ProcessIds pids, Map<String, Object> dataAddress) {
+        connector.verifyProcessIds(processId, pids);
         connector.receiveTransferStart(processId, dataAddress);
     }
 
     @Override
-    public void sendTransferCompletionMessage(String senderId, String callbackAddress, String processId) {
+    public void sendTransferCompletionMessage(String senderId, String callbackAddress, String processId, ProcessIds pids) {
+        connector.verifyProcessIds(processId, pids);
         connector.receiveTransferCompletion(processId);
     }
 
     @Override
-    public void sendTransferTerminationMessage(String senderId, String callbackAddress, String processId) {
+    public void sendTransferTerminationMessage(String senderId, String callbackAddress, String processId, ProcessIds pids) {
+        connector.verifyProcessIds(processId, pids);
         connector.receiveTransferTermination(processId);
     }
 
     @Override
     public TransferRequestResult sendTransferRequestMessage(String senderId, String address, String agreementId, String profile) {
-        var providerPid = connector.receiveTransferRequestMessage(address, agreementId);
-        return new TransferRequestResult(providerPid, null);
+        var consumerPid = UUID.randomUUID().toString();
+        var providerPid = connector.receiveTransferRequestMessage(address, agreementId, consumerPid);
+        return new TransferRequestResult(providerPid, consumerPid, null);
     }
 
     @Override
-    public void sendTransferSuspensionMessage(String senderId, String callbackAddress, String processId) {
+    public void sendTransferSuspensionMessage(String senderId, String callbackAddress, String processId, ProcessIds pids) {
+        connector.verifyProcessIds(processId, pids);
         connector.receiveTransferSuspension(processId);
     }
 
