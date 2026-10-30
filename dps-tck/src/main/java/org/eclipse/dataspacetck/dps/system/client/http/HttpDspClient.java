@@ -26,6 +26,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -96,7 +97,7 @@ public class HttpDspClient implements DspClient {
     public TransferRequestResult sendTransferRequestMessage(String senderId, String address, String agreementId, String profile) {
         var consumerPid = UUID.randomUUID().toString();
         var requestBody = Map.of(
-                "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
+                "@context", List.of("https://w3id.org/dspace/2025/1/context.jsonld"),
                 "@type", "TransferRequestMessage",
                 "consumerPid", consumerPid,
                 "callbackAddress", address,
@@ -145,9 +146,9 @@ public class HttpDspClient implements DspClient {
         }
     }
 
-    private static @NonNull Map<String, String> message(ProcessIds pids, String type) {
+    private static @NonNull Map<String, Object> message(ProcessIds pids, String type) {
         return Map.of(
-                "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
+                "@context", List.of("https://w3id.org/dspace/2025/1/context.jsonld"),
                 "@type", type,
                 "providerPid", pids.providerPid(),
                 "consumerPid", pids.consumerPid()

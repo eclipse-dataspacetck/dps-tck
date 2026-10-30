@@ -24,6 +24,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -237,7 +238,7 @@ public class LocalControlPlaneConnector {
     private void sendDspTransferRequestMessage(String dataPlaneUrl, String consumerPid, String agreementId) {
         try {
             var message = Map.of(
-                    "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
+                    "@context", List.of("https://w3id.org/dspace/2025/1/context.jsonld"),
                     "@type", "TransferRequestMessage",
                     "consumerPid", consumerPid,
                     "callbackAddress", dataPlaneUrl,
