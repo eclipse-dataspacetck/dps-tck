@@ -385,7 +385,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                 lastCounterParty.set(new CounterParty(consumerProcessId, callbackAddress, new ProcessIds(consumerProcessId, providerProcessId)));
                 monitor.debug("Received TransferRequestMessage from control plane: %s, dataFlowId=%s".formatted(message, consumerProcessId));
                 return new HandlerResponse(200, mapper.writeValueAsString(Map.of(
-                        "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
+                        "@context", List.of("https://w3id.org/dspace/2025/1/context.jsonld"),
                         "@type", "TransferProcess",
                         "providerPid", providerProcessId,
                         "consumerPid", consumerProcessId
@@ -405,7 +405,7 @@ public class ControlPlaneSignalingPipeline extends AbstractAsyncPipeline<Control
                 var providerProcessId = (String) message.get("providerPid");
                 monitor.debug("Received TransferStartMessage from control plane: %s. dataFlowId=%s".formatted(message, providerProcessId));
                 return new HandlerResponse(200, mapper.writeValueAsString(Map.of(
-                        "@context", "https://w3id.org/dspace/2025/1/context.jsonld",
+                        "@context", List.of("https://w3id.org/dspace/2025/1/context.jsonld"),
                         "@type", "TransferProcess",
                         "providerPid", providerProcessId,
                         "consumerPid", Optional.ofNullable(lastCounterParty.get()).map(c -> c.pids().consumerPid())
